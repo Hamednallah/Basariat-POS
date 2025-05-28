@@ -1,0 +1,1246 @@
+Basariat POS - Complete PlantUML Diagrams (Final - EN)This document contains the PlantUML textual descriptions for the various Unified Modeling Language (UML) diagrams designed for the "Basariat POS" system. These diagrams collectively illustrate the system's actors, use cases, static structure (classes and packages), dynamic behavior (sequences of interactions and activity flows), and physical deployment. The diagrams reflect the complete system design, including Shift Management, WhatsApp Click-to-Chat functionality, Center Profile configuration, the use of JavaFX for the UI, and all other discussed features.To visualize these diagrams, the following PlantUML code blocks can be copied and pasted into a PlantUML rendering tool (e.g., an online PlantUML editor, a local PlantUML installation, or integrated plugins within IDEs like IntelliJ IDEA or VS Code).1. Use Case DiagramThis diagram illustrates the primary actors interacting with the "Basariat POS" system and the main functionalities (use cases) they can perform. It also shows relationships between use cases, such as inclusion or extension.@startuml UseCaseDiagram_Final_EN_Complete_V3
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor Admin
+actor Cashier
+
+rectangle "Basariat POS System (JavaFX Application)" {
+  usecase "Login / Logout" as UC_Login
+  usecase "Switch Language (UI)" as UC_SwitchLanguage
+
+  package "System Setup & Configuration" {
+    usecase "Perform Initial Center Setup Wizard" as UC_InitialSetup
+    usecase "Manage Center Profile Details" as UC_ManageCenterProfile
+    usecase "Manage System Settings\n(Banks, Categories, App Prefs)" as UC_ManageSettings
+    usecase "Manage Users & Permissions" as UC_ManageUsers
+  }
+
+  package "Shift Operations & Management" {
+    usecase "Start Shift\n(Declare Opening Float)" as UC_StartShift
+    usecase "End Shift\n(Declare Closing Cash & Reconcile)" as UC_EndShift
+    usecase "Pause Active Shift" as UC_PauseShift
+    usecase "Resume Paused/Interrupted Shift" as UC_ResumeShift
+    usecase "View Own Shift Report\n(Summary & Details)" as UC_ViewOwnShiftReport
+    usecase "View All Shift Reports (Admin)" as UC_ViewAllShiftReports
+    usecase "Handle Interrupted Shift Scenario" as UC_HandleInterruptedShift
+  }
+
+  package "Patient Records & Diagnostics" {
+    usecase "Manage Patient Information\n(CRUD, Search)" as UC_ManagePatients
+    usecase "Manage Patient Optical\nDiagnostics History" as UC_ManageDiagnostics
+    usecase "Manage Patient Consent\nfor WhatsApp" as UC_WhatsAppConsent
+  }
+
+  package "Inventory, Products & Purchasing" {
+    usecase "Manage Product Definitions\n& Categories" as UC_ManageProductDefs
+    usecase "Manage Inventory Items\n(Stock Levels, Pricing)" as UC_ManageInventory
+    usecase "Manage Purchase Orders\n(Create, Add Items, Receive Stock)" as UC_ManagePO
+    usecase "Perform Manual Stock Adjustments\n(with Reason)" as UC_StockAdjust
+  }
+
+  package "Sales & Payment Processing\n(Linked to Active Shift)" {
+    usecase "Process Sales Order\n(Stock, Custom Lenses, Services)" as UC_ProcessSale
+    usecase "Apply Discount to Sales Order" as UC_ApplyDiscount
+    usecase "Process Payment for Sales Order\n(Full/Partial)" as UC_ProcessPayment
+    usecase "Handle Abandoned Sales Order\n(Restock, Log Loss)" as UC_HandleAbandonedOrder
+  }
+
+  package "Financial Operations\n(Linked to Active Shift for Cash)" {
+    usecase "Manage Business Expenses" as UC_ManageExpenses
+  }
+
+  package "Appointments & Patient Communication" {
+    usecase "Manage Patient Appointments\n(Schedule, Status Update)" as UC_ManageAppointments
+    usecase "Initiate WhatsApp Notification\n(Click-to-Chat)" as UC_InitiateWhatsApp
+  }
+
+  package "Reporting, Utilities & System Information" {
+    usecase "Generate Financial Reports\n(P&L, etc.)" as UC_GenerateFinancialReports
+    usecase "Generate Inventory Reports\n(Valuation, Low Stock)" as UC_GenerateInventoryReports
+    usecase "Generate Operational Reports\n(Outstanding Payments, etc.)" as UC_GenerateOperationalReports
+    usecase "View System Audit Logs (Admin)" as UC_ViewAuditLogs
+    usecase "View User Manual / Help Section" as UC_ViewHelp
+    usecase "View About Application Information" as UC_ViewAbout
+  }
+
+  ' Admin Use Cases
+  Admin -- UC_Login
+  Admin -- UC_SwitchLanguage
+  Admin -- UC_InitialSetup
+  Admin -- UC_ManageCenterProfile
+  Admin -- UC_ManageSettings
+  Admin -- UC_ManageUsers
+  Admin -- UC_ViewAllShiftReports
+  Admin -- UC_HandleInterruptedShift ' Potentially for overriding/assisting
+  Admin -- UC_ManagePatients
+  Admin -- UC_ManageDiagnostics
+  Admin -- UC_ManageProductDefs
+  Admin -- UC_ManageInventory
+  Admin -- UC_ManagePO
+  Admin -- UC_StockAdjust
+  Admin -- UC_ProcessSale ' Can also perform sales
+  Admin -- UC_ManageExpenses
+  Admin -- UC_ManageAppointments
+  Admin -- UC_GenerateFinancialReports
+  Admin -- UC_GenerateInventoryReports
+  Admin -- UC_GenerateOperationalReports
+  Admin -- UC_ViewAuditLogs
+  Admin -- UC_ViewHelp
+  Admin -- UC_ViewAbout
+  Admin -- UC_InitiateWhatsApp
+  Admin -- UC_WhatsAppConsent
+
+  ' Cashier Use Cases
+  Cashier -- UC_Login
+  Cashier -- UC_SwitchLanguage
+  Cashier -- UC_StartShift
+  Cashier -- UC_EndShift
+  Cashier -- UC_PauseShift
+  Cashier -- UC_ResumeShift
+  Cashier -- UC_ViewOwnShiftReport
+  Cashier -- UC_HandleInterruptedShift
+  Cashier -- UC_ManagePatients
+  Cashier -- UC_ManageDiagnostics
+  Cashier -- UC_WhatsAppConsent
+  Cashier -- UC_ManageInventory ' (View, potentially limited edits with permission)
+  Cashier -- UC_ProcessSale
+  Cashier -- UC_ApplyDiscount ' (with permission)
+  Cashier -- UC_ProcessPayment
+  Cashier -- UC_HandleAbandonedOrder ' (with permission)
+  Cashier -- UC_ManageExpenses ' (primarily cash expenses linked to shift)
+  Cashier -- UC_ManageAppointments
+  Cashier -- UC_InitiateWhatsApp
+  Cashier -- UC_GenerateOperationalReports ' (e.g., their own sales for the shift)
+  Cashier -- UC_ViewHelp
+  Cashier -- UC_ViewAbout
+
+  ' Generalization / Extension / Inclusion Relationships
+  UC_ManageCenterProfile .up.> UC_Login : extends
+  UC_ManageSettings .up.> UC_Login : extends
+  UC_ManageUsers .up.> UC_Login : extends
+  UC_StartShift .up.> UC_Login : extends
+  UC_EndShift .up.> UC_Login : extends
+  UC_PauseShift .up.> UC_Login : extends
+  UC_ResumeShift .up.> UC_Login : extends
+  UC_ViewOwnShiftReport .up.> UC_Login : extends
+  UC_ViewAllShiftReports .up.> UC_Login : extends
+  UC_HandleInterruptedShift .up.> UC_Login : extends
+  UC_ManagePatients .up.> UC_Login : extends
+  UC_ManageDiagnostics .up.> UC_Login : extends
+  UC_ManageProductDefs .up.> UC_Login : extends
+  UC_ManageInventory .up.> UC_Login : extends
+  UC_ManagePO .up.> UC_Login : extends
+  UC_StockAdjust .up.> UC_Login : extends
+  UC_ProcessSale .up.> UC_Login : extends
+  UC_ManageExpenses .up.> UC_Login : extends
+  UC_ManageAppointments .up.> UC_Login : extends
+  UC_GenerateFinancialReports .up.> UC_Login : extends
+  UC_GenerateInventoryReports .up.> UC_Login : extends
+  UC_GenerateOperationalReports .up.> UC_Login : extends
+  UC_ViewAuditLogs .up.> UC_Login : extends
+  UC_ViewHelp .up.> UC_Login : extends
+  UC_ViewAbout .up.> UC_Login : extends
+  UC_InitiateWhatsApp .up.> UC_Login : extends
+
+  UC_ProcessSale .up.> UC_StartShift : include 'Requires Active Shift'
+  UC_ProcessPayment .up.> UC_ProcessSale : extends
+  UC_ApplyDiscount .up.> UC_ProcessSale : extends
+  UC_HandleAbandonedOrder .up.> UC_ProcessSale : extends
+  UC_ProcessPayment .up.> UC_StartShift : include 'Requires Active Shift'
+  UC_ManageExpenses .up.> UC_StartShift : include 'Cash Expenses Require Active Shift'
+  UC_WhatsAppConsent .up.> UC_ManagePatients : include
+  UC_InitiateWhatsApp ..> UC_ManagePatients : uses 'Patient Contact & Consent'
+}
+@enduml
+2. Class Diagram (Key Domain & Conceptual Application Classes)This diagram shows the main domain entities (classes) of the "Basariat POS" system, their key attributes (with data types), important method signatures, and the relationships between them (associations, aggregations, compositions, inheritance) including multiplicities. It also includes conceptual classes for the application layer (Services, Repositories, UI Controllers) to illustrate their interaction with the domain model.@startuml ClassDiagram_Final_EN_Complete_V3
+skinparam classAttributeIconSize 0
+hide empty members
+skinparam defaultFontName "Segoe UI" ' Or another clear sans-serif font
+
+package "Configuration & Settings" {
+  class CenterProfile {
+    +profileId: INT {PK, Default 1}
+    +centerName: VARCHAR(255) {NOT NULL}
+    +addressLine1: TEXT
+    +addressLine2: TEXT
+    +city: VARCHAR(100)
+    +country: VARCHAR(100)
+    +postalCode: VARCHAR(20)
+    +phonePrimary: VARCHAR(30) {NOT NULL}
+    +phoneSecondary: VARCHAR(30)
+    +emailAddress: VARCHAR(255)
+    +website: VARCHAR(255)
+    +logoImagePath: VARCHAR(512)
+    +taxIdentifier: VARCHAR(100)
+    +currencySymbol: VARCHAR(10) {Default 'SDG'}
+    +currencyCode: VARCHAR(5) {Default 'SDG'}
+    +receiptFooterMessage: TEXT
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+  class ApplicationSetting {
+    +settingKey: VARCHAR(100) {PK}
+    +settingValue: TEXT
+    +description: TEXT
+  }
+  class BankName {
+    +bankNameId: SERIAL {PK}
+    +bankNameEn: VARCHAR(100) {UNIQUE, NOT NULL}
+    +bankNameAr: VARCHAR(100) {UNIQUE, NOT NULL}
+    +isActive: BOOLEAN {Default TRUE}
+  }
+}
+
+package "User & Shift Management" {
+  class User {
+    +userId: SERIAL {PK}
+    +username: VARCHAR(100) {UNIQUE, NOT NULL}
+    -passwordHash: VARCHAR(255) {NOT NULL}
+    +fullName: VARCHAR(255) {NOT NULL}
+    +role: VARCHAR(50) {NOT NULL, CHECK ('Admin', 'Cashier')}
+    +isActive: BOOLEAN {Default TRUE}
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    --
+    +hasPermission(permissionName: VARCHAR): BOOLEAN
+  }
+  class UserPermission {
+    +permissionId: SERIAL {PK}
+    +userId: INT <<FK>> {NOT NULL}
+    +permissionName: VARCHAR(100) {NOT NULL}
+    +isGranted: BOOLEAN {Default TRUE}
+  }
+  class Shift {
+    +shiftId: SERIAL {PK}
+    +startedByUserId: INT <<FK>> {NOT NULL}
+    +startTime: TIMESTAMP {NOT NULL, Default CURRENT_TIMESTAMP}
+    +endTime: TIMESTAMP (nullable)
+    +status: VARCHAR(20) {NOT NULL, CHECK ('Active', 'Paused', 'Ended', 'Interrupted')}
+    +openingFloat: DECIMAL(12,2) {NOT NULL}
+    +closingCashCounted: DECIMAL(12,2) (nullable)
+    +expectedCashInDrawer: DECIMAL(12,2) (nullable)
+    +cashVariance: DECIMAL(12,2) (nullable)
+    +notes: TEXT
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+  class ShiftPauseLog {
+    +shiftPauseLogId: SERIAL {PK}
+    +shiftId: INT <<FK>> {NOT NULL}
+    +pausedAt: TIMESTAMP {NOT NULL, Default CURRENT_TIMESTAMP}
+    +resumedAt: TIMESTAMP (nullable)
+    +pausedByUserId: INT <<FK>> {NOT NULL}
+  }
+}
+
+package "Patient Domain" {
+  class Patient {
+    +patientId: SERIAL {PK}
+    +systemPatientId: VARCHAR(50) {UNIQUE, NOT NULL}
+    +fullName: VARCHAR(255) {NOT NULL}
+    +phoneNumber: VARCHAR(30) {NOT NULL}
+    +address: TEXT
+    +whatsappOptIn: BOOLEAN {Default FALSE}
+    +createdByUserId: INT <<FK>> (nullable)
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+  class OpticalDiagnostic {
+    +diagnosticId: SERIAL {PK}
+    +patientId: INT <<FK>> {NOT NULL}
+    +diagnosticDate: DATE {NOT NULL, Default CURRENT_DATE}
+    +isContactLensRx: BOOLEAN {Default FALSE}
+    +contactLensDetails: TEXT
+    +odSphDist: DECIMAL(5,2); +odCylDist: DECIMAL(5,2); +odAxisDist: INT
+    +osSphDist: DECIMAL(5,2); +osCylDist: DECIMAL(5,2); +osAxisDist: INT
+    +odAdd: DECIMAL(5,2); +osAdd: DECIMAL(5,2); +ipd: DECIMAL(5,2)
+    +remarks: TEXT
+    +createdByUserId: INT <<FK>> (nullable)
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+}
+
+package "Product & Inventory Domain" {
+  class ProductCategory {
+    +categoryId: SERIAL {PK}
+    +categoryNameEn: VARCHAR(100) {UNIQUE, NOT NULL}
+    +categoryNameAr: VARCHAR(100) {UNIQUE, NOT NULL}
+  }
+  class Product {
+    +productId: SERIAL {PK}
+    +productCode: VARCHAR(100) {UNIQUE}
+    +productNameEn: VARCHAR(255) {NOT NULL}; +productNameAr: VARCHAR(255) {NOT NULL}
+    +categoryId: INT <<FK>> {NOT NULL}
+    +descriptionEn: TEXT; +descriptionAr: TEXT
+    +isService: BOOLEAN {NOT NULL, Default FALSE}
+    +isStockItem: BOOLEAN {NOT NULL, Default TRUE}
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}; +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+  class InventoryItem {
+    +inventoryItemId: SERIAL {PK}
+    +productId: INT <<FK>> {NOT NULL}
+    +brandName: VARCHAR(100)
+    +itemSpecificNameEn: VARCHAR(255); +itemSpecificNameAr: VARCHAR(255)
+    +attributes: JSONB
+    +quantityOnHand: INT {NOT NULL, Default 0, CHECK (>=0)}
+    +sellingPrice: DECIMAL(10,2) {NOT NULL}
+    +costPrice: DECIMAL(10,2) (nullable)
+    +minStockLevel: INT {Default 0}
+    +unitOfMeasure: VARCHAR(50) {Default 'Unit'}
+    +isActive: BOOLEAN {Default TRUE}
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}; +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+}
+
+package "Purchasing Domain" {
+  class PurchaseOrder {
+    +purchaseOrderId: SERIAL {PK}
+    +orderDate: DATE {NOT NULL, Default CURRENT_DATE}
+    +supplierName: VARCHAR(255)
+    +totalAmount: DECIMAL(12,2) {Default 0.00}
+    +status: VARCHAR(50) {NOT NULL, CHECK ('Pending', 'Received', 'Cancelled')}
+    +createdByUserId: INT <<FK>> {NOT NULL}
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}; +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+  class PurchaseOrderItem {
+    +poItemId: SERIAL {PK}
+    +purchaseOrderId: INT <<FK>> {NOT NULL}
+    +inventoryItemId: INT <<FK>> {NOT NULL}
+    +quantityOrdered: INT {NOT NULL, CHECK (>0)}
+    +quantityReceived: INT {Default 0, CHECK (>=0)}
+    +purchasePricePerUnit: DECIMAL(10,2) {NOT NULL}
+    +subtotal: DECIMAL(10,2) {Generated}
+  }
+}
+
+package "Sales & Payment Domain" {
+  class SalesOrder {
+    +salesOrderId: SERIAL {PK}
+    +patientId: INT <<FK>> (nullable)
+    +orderDate: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    +status: VARCHAR(50) {NOT NULL, CHECK ('Pending', 'Awaiting Lenses', 'Ready for Pickup', 'Completed', 'Cancelled', 'Abandoned')}
+    +subtotalAmount: DECIMAL(12,2) {Default 0.00}
+    +discountAmount: DECIMAL(12,2) {Default 0.00}
+    +totalAmount: DECIMAL(12,2) {Generated}
+    +amountPaid: DECIMAL(12,2) {Default 0.00}
+    +balanceDue: DECIMAL(12,2) {Generated}
+    +shiftId: INT <<FK>> {NOT NULL}
+    +remarks: TEXT
+    +createdByUserId: INT <<FK>> {NOT NULL}
+    +deliveryAppointmentId: INT <<FK>> (nullable, UNIQUE)
+    +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+  class SalesOrderItem {
+    +soItemId: SERIAL {PK}
+    +salesOrderId: INT <<FK>> {NOT NULL}
+    +inventoryItemId: INT <<FK>> (nullable)
+    +serviceProductId: INT <<FK>> (nullable) ' Refers to Products.product_id where is_service=TRUE
+    +description: VARCHAR(255)
+    +quantity: INT {NOT NULL, CHECK (>0)}
+    +unitPrice: DECIMAL(10,2) {NOT NULL}
+    +itemSubtotal: DECIMAL(10,2) {Generated}
+    +prescriptionDetails: JSONB
+    +isCustomLenses: BOOLEAN {Default FALSE}
+    +isRestockedOnAbandonment: BOOLEAN {Default FALSE}
+  }
+  class Payment {
+    +paymentId: SERIAL {PK}
+    +salesOrderId: INT <<FK>> {NOT NULL}
+    +paymentDate: TIMESTAMP {Default CURRENT_TIMESTAMP}
+    +amount: DECIMAL(10,2) {NOT NULL, CHECK (>0)}
+    +paymentMethod: VARCHAR(50) {NOT NULL, CHECK ('Cash', 'Bank Transaction')}
+    +bankNameId: INT <<FK>> (nullable)
+    +transactionId: VARCHAR(100) (nullable)
+    +shiftId: INT <<FK>> {NOT NULL}
+    +notes: TEXT
+    +receivedByUserId: INT <<FK>> {NOT NULL}
+  }
+}
+
+package "Financial Operations Domain" {
+  class ExpenseCategory {
+    +expenseCategoryId: SERIAL {PK}
+    +categoryNameEn: VARCHAR(100) {UNIQUE, NOT NULL}
+    +categoryNameAr: VARCHAR(100) {UNIQUE, NOT NULL}
+    +isActive: BOOLEAN {Default TRUE}
+  }
+  class Expense {
+    +expenseId: SERIAL {PK}
+    +expenseDate: DATE {NOT NULL}
+    +expenseCategoryId: INT <<FK>> {NOT NULL}
+    +description: TEXT {NOT NULL}
+    +amount: DECIMAL(10,2) {NOT NULL, CHECK (>0)}
+    +paymentMethod: VARCHAR(50) {NOT NULL, CHECK ('Cash', 'Bank Transaction')}
+    +bankNameId: INT <<FK>> (nullable)
+    +transactionIdRef: VARCHAR(100) (nullable)
+    +shiftId: INT <<FK>> (nullable) ' NOT NULL for cash expenses from till
+    +createdByUserId: INT <<FK>> {NOT NULL}
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}; +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+}
+
+package "Appointments Domain" {
+  class Appointment {
+    +appointmentId: SERIAL {PK}
+    +salesOrderId: INT <<FK>> {NOT NULL}
+    +appointmentDateTime: TIMESTAMP {NOT NULL}
+    +status: VARCHAR(50) {NOT NULL, CHECK ('Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'No Show', 'Rescheduled')}
+    +notes: TEXT
+    +createdByUserId: INT <<FK>> {NOT NULL}
+    +createdAt: TIMESTAMP {Default CURRENT_TIMESTAMP}; +updatedAt: TIMESTAMP {Default CURRENT_TIMESTAMP}
+  }
+}
+
+package "Auditing" {
+    class AuditLog {
+        +auditLogId: BIGSERIAL {PK}
+        +tableName: VARCHAR(100) {NOT NULL}
+        +recordPk: TEXT {NOT NULL}
+        +oldValue: TEXT (nullable); +newValue: TEXT (nullable)
+        +actionType: VARCHAR(10) {NOT NULL, CHECK ('INSERT', 'UPDATE', 'DELETE')}
+        +actionTimestamp: TIMESTAMP {Default CURRENT_TIMESTAMP}
+        +userId: INT <<FK>> (nullable) ' User who performed the action
+        +details: TEXT (nullable) ' Additional context
+    }
+}
+
+' Relationships
+User "1" -- "0..*" UserPermission : manages >
+User "1" -- "0..*" Shift : starts/owns >
+Shift "1" -- "0..*" ShiftPauseLog : logs <
+Shift "1" -- "0..*" SalesOrder : groups transactions <
+Shift "1" -- "0..*" Payment : groups transactions <
+Shift "1" -- "0..*" Expense : groups cash expenses <
+
+User "1" -- "0..*" Patient : created by >
+Patient "1" -- "0..*" OpticalDiagnostic : has prescription history >
+Patient "0..1" -- "0..*" SalesOrder : places order <
+
+ProductCategory "1" -- "0..*" Product : categorizes >
+Product "1" -- "0..*" InventoryItem : has specific items / variants >
+
+PurchaseOrder "1" -- "1..*" PurchaseOrderItem : contains items >
+PurchaseOrderItem "1" -- "1" InventoryItem : orders <
+
+SalesOrder "1" -- "1..*" SalesOrderItem : contains items >
+SalesOrderItem "0..1" -- "1" InventoryItem : sells stock item <
+SalesOrderItem "0..1" -- "1" Product : sells service < ' Product.is_service = TRUE
+
+SalesOrder "1" -- "0..*" Payment : receives payments for >
+Payment "0..1" -- "1" BankName : via (if bank transaction) >
+
+ExpenseCategory "1" -- "0..*" Expense : categorizes >
+Expense "0..1" -- "1" BankName : paid via (if bank transaction) >
+
+SalesOrder "1" -- "0..1" Appointment : has delivery/follow-up <
+Appointment "1" -- "1" SalesOrder : is for <
+
+User "0..1" -- "0..*" AuditLog '(action performed by)'
+
+package "Application Layer (Conceptual - JavaFX)" {
+    abstract class BaseController { /* Common UI logic, i18n helper */ }
+    class AppMain extends javafx.application.Application {}
+    class MainFrameController extends BaseController { /* Handles main window, navigation, global status (shift) */ }
+    class LoginController extends BaseController {}
+    class CenterProfileSetupController extends BaseController {}
+    class PatientControllerFXML extends BaseController {}
+    class SalesOrderControllerFXML extends BaseController {}
+    class ShiftOperationsControllerFXML extends BaseController { /* Manages Start/End/Pause Shift Dialogs & UI logic */ }
+    class ShiftReportController extends BaseController {}
+    class InventoryControllerFXML extends BaseController {}
+    class PurchaseOrderControllerFXML extends BaseController {}
+    class ExpenseControllerFXML extends BaseController {}
+    class AppointmentControllerFXML extends BaseController {}
+    class AdminSettingsController extends BaseController { /* Manages users, permissions, categories, banks, app settings */ }
+    class AuditLogViewController extends BaseController {}
+    class HelpControllerUI extends BaseController { /* Manages display of help/about content */ }
+
+    class AboutDialog {} ' Simple FXML + Controller
+    class UserManualView {} ' Uses JavaFX WebView
+
+    ' --- Services (Business Logic Layer) ---
+    interface Service {} ' Optional marker interface for services
+    class AppConfigService implements Service { +getCenterProfile(): CenterProfileDTO; +getApplicationSetting(key: String): String }
+    class UserSessionService implements Service { +login(u,p): UserDTO; +logout(); +getCurrentUser(): UserDTO; +getCurrentShift(): ShiftDTO; +setActiveShift(s: ShiftDTO); +clearActiveShift(); +setDbUserContext(id: INT); +setDbShiftContext(id: INT); +hasPermission(perm: String):BOOLEAN }
+    class ShiftService implements Service { /* Handles business logic for starting, ending, pausing, resuming, reconciling shifts */ }
+    class WhatsAppNotificationService implements Service { /* Handles Click-to-Chat link generation */ }
+    class UserService implements Service {}
+    class PatientService implements Service {}
+    class InventoryService implements Service {}
+    class ProductService implements Service {}
+    class SalesOrderService implements Service {}
+    class PaymentService implements Service {}
+    class PurchaseOrderService implements Service {}
+    class ExpenseService implements Service {}
+    class AppointmentService implements Service {}
+    class ReportGenerationService implements Service {}
+    class AuditLogService implements Service {}
+
+
+    ' --- Repositories (Data Access Layer) ---
+    interface Repository<T, ID> { /* Common CRUD methods */ }
+    class CenterProfileRepository implements Repository {}
+    class UserRepository implements Repository {}
+    class ShiftRepository implements Repository {}
+    ' (Other repositories for each domain entity)
+
+    ' --- DTOs / ViewModels (Model Layer, if distinct from jOOQ Records for UI) ---
+    class PatientDTO {}
+    class SalesOrderDTO {}
+    class ShiftReportData {}
+}
+' Conceptual Dependencies
+ui.controller.MainFrameController ..> service.UserSessionService
+ui.controller.ShiftOperationsControllerFXML ..> service.ShiftService
+service.ShiftService ..> repository.ShiftRepository
+service.ShiftService ..> service.UserSessionService ' To get current user for starting shift
+' (Many other dependencies exist between controllers, services, and repositories)
+@enduml
+3. Sequence Diagrams3.1. Processing a New Custom Glasses Sale (Context: Active Shift)@startuml SequenceDiagram_CustomSale_Final_V3
+autonumber
+
+actor Cashier
+participant SalesOrderFormView <<FXML View>>
+participant SalesOrderControllerFXML <<JavaFX Controller>>
+participant UserSessionService <<Service>>
+participant PatientService <<Service>>
+participant InventoryService <<Service>>
+participant SalesOrderService <<Service>>
+participant PaymentService <<Service>>
+database Database <<PostgreSQL>>
+
+Cashier -> SalesOrderFormView: Enters patient details, selects frame, Rx, lens options
+SalesOrderFormView -> SalesOrderControllerFXML: handleCreateSalesOrder(patientData, frameItemId, lensDetails)
+SalesOrderControllerFXML -> UserSessionService: getCurrentShift()
+UserSessionService --> SalesOrderControllerFXML: activeShift (or throws NoActiveShiftException if null)
+SalesOrderControllerFXML -> PatientService: findOrCreatePatient(patientData)
+PatientService -> Database: Query/Insert Patient
+Database --> PatientService: Patient object/ID
+PatientService --> SalesOrderControllerFXML: Patient object/ID
+SalesOrderControllerFXML -> InventoryService: getInventoryItemDetails(frameItemId)
+InventoryService -> Database: Query InventoryItem
+Database --> InventoryService: Frame Item details
+InventoryService --> SalesOrderControllerFXML: Frame Item details
+SalesOrderControllerFXML -> SalesOrderService: calculateCustomLensPrice(lensDetails)
+SalesOrderService --> SalesOrderControllerFXML: calculatedLensPrice
+SalesOrderControllerFXML -> SalesOrderService: createNewOrder(patientId, frameItem, lensItemData, lensPrice, activeShift.getShiftId(), UserSessionService.getCurrentUser().getUserId())
+note right of SalesOrderService : Includes creating SalesOrder (with shift_id) & SalesOrderItems.\nDB Trigger RecalculateSalesOrderSubtotal runs.
+SalesOrderService -> Database: Insert SalesOrder, SalesOrderItems
+Database --> SalesOrderService: newSalesOrder (with ID & calculated totals)
+SalesOrderService --> SalesOrderControllerFXML: newSalesOrder
+SalesOrderControllerFXML --> SalesOrderFormView: Display Order Summary & TotalAmount
+Cashier -> SalesOrderFormView: Enters payment amount & method for the order
+SalesOrderFormView -> SalesOrderControllerFXML: handleProcessPayment(orderId, paymentAmount, method, bankId, transId, notes)
+SalesOrderControllerFXML -> UserSessionService: getCurrentShift() ' Re-confirm active shift
+UserSessionService --> SalesOrderControllerFXML: activeShift
+SalesOrderControllerFXML -> PaymentService: recordPaymentForOrder(orderId, amount, method, bankId, transId, notes, UserSessionService.getCurrentUser().getUserId(), activeShift.getShiftId())
+note right of PaymentService : Calls RecordPaymentAndUpdateSalesOrder DB procedure (which internally uses get_current_app_shift_id())
+PaymentService -> Database: Execute RecordPaymentAndUpdateSalesOrder(...)
+Database --> PaymentService: PaymentSuccessConfirmation
+PaymentService --> SalesOrderControllerFXML: PaymentSuccessConfirmation
+SalesOrderControllerFXML --> SalesOrderFormView: Display Payment Confirmation, Update Balance Due, Offer Receipt
+
+alt Order Status is subsequently changed to "Completed" by User
+    SalesOrderControllerFXML -> SalesOrderService : markOrderAsCompleted(orderId, UserSessionService.getCurrentUser().getUserId())
+    SalesOrderService -> Database : Update SalesOrder.status to 'Completed'
+    SalesOrderService -> InventoryService: deductStockForCompletedOrder(orderId) ' Application calls service which calls DB Procedure
+    InventoryService -> Database: Execute ProcessOrderCompletionStockUpdate(orderId)
+    Database --> InventoryService: StockUpdateSuccess
+    InventoryService --> SalesOrderService: StockUpdateSuccess
+    SalesOrderService --> SalesOrderControllerFXML: OrderCompletedConfirmation
+    SalesOrderControllerFXML --> SalesOrderFormView: Update Order Status Display
+end
+@enduml
+3.2. Processing a Purchase Order and Receiving Stock@startuml SequenceDiagram_PurchaseOrderProcessing_Final_V3
+autonumber
+
+actor User as "Admin/Cashier"
+participant PurchaseOrderFormView <<FXML View>>
+participant PurchaseOrderControllerFXML <<JavaFX Controller>>
+participant PurchaseOrderService <<Service>>
+participant InventoryService <<Service>>
+database Database <<PostgreSQL>>
+
+User -> PurchaseOrderFormView: Initiates New Purchase Order action
+PurchaseOrderFormView -> PurchaseOrderControllerFXML: handleNewPurchaseOrderRequest()
+PurchaseOrderControllerFXML -> PurchaseOrderService: createNewPurchaseOrder(supplierName, currentUserId)
+PurchaseOrderService -> Database: Insert PurchaseOrder (status 'Pending')
+Database --> PurchaseOrderService: newPurchaseOrder (with ID)
+PurchaseOrderService --> PurchaseOrderControllerFXML: newPurchaseOrder
+PurchaseOrderControllerFXML --> PurchaseOrderFormView: Display new PO (ID, empty items list), enable item addition
+
+loop For each item to add to PO
+    User -> PurchaseOrderFormView: Selects InventoryItem, enters Quantity Ordered, Purchase Price per Unit
+    PurchaseOrderFormView -> PurchaseOrderControllerFXML: handleAddItemToPO(poId, inventoryItemId, qtyOrdered, pricePerUnit)
+    PurchaseOrderControllerFXML -> PurchaseOrderService: addItemToPurchaseOrder(poId, itemId, qtyOrdered, pricePerUnit)
+    PurchaseOrderService -> Database: Insert PurchaseOrderItem
+    note right of Database: DB Trigger update_purchase_order_total automatically updates PurchaseOrder.totalAmount
+    Database --> PurchaseOrderService: ItemAddedConfirmation (or updated POItem)
+    PurchaseOrderService -> PurchaseOrderControllerFXML: UpdatedPurchaseOrder (with new item and total)
+    PurchaseOrderControllerFXML --> PurchaseOrderFormView: Refresh PO item list and total display
+end
+
+User -> PurchaseOrderFormView: Confirms/Saves final PO (e.g., changes status if needed, or just closes)
+PurchaseOrderFormView -> PurchaseOrderControllerFXML: handleSavePurchaseOrder(updatedPOData)
+PurchaseOrderControllerFXML -> PurchaseOrderService: savePurchaseOrder(updatedPOData)
+PurchaseOrderService -> Database: Update PurchaseOrder (if any changes like status)
+Database --> PurchaseOrderService: SaveConfirmation
+PurchaseOrderService --> PurchaseOrderControllerFXML: SaveConfirmation
+
+== Later: Receiving Stock against the PO ==
+User -> PurchaseOrderFormView: Finds existing PO, selects "Receive Stock" action
+PurchaseOrderFormView -> PurchaseOrderControllerFXML: handleReceiveStockForPO(poId)
+PurchaseOrderControllerFXML -> PurchaseOrderService: getPurchaseOrderForReceiving(poId)
+PurchaseOrderService -> Database: Fetch PurchaseOrder and associated PurchaseOrderItems
+Database --> PurchaseOrderService: poDetailsWithItems
+PurchaseOrderService --> PurchaseOrderControllerFXML: poDetailsWithItems
+PurchaseOrderControllerFXML --> PurchaseOrderFormView: Display PO items, allow entering Quantity Received for each
+
+loop For each POItem being received
+    User -> PurchaseOrderFormView: Enters Quantity Received for a specific PurchaseOrderItem
+    PurchaseOrderFormView -> PurchaseOrderControllerFXML: handleUpdatePOItemReceived(poItemId, qtyReceived)
+    PurchaseOrderControllerFXML -> PurchaseOrderService: updatePurchaseOrderItemReceivedQuantity(poItemId, qtyReceived)
+    PurchaseOrderService -> Database: Update PurchaseOrderItem.quantity_received
+    note right of Database: DB Trigger trg_update_inventory_on_po_receipt automatically updates\nInventoryItem.quantityOnHand and InventoryItem.costPrice
+    Database --> PurchaseOrderService: UpdateSuccess
+    ' Optional: Refresh related inventory item in UI if displayed elsewhere
+    PurchaseOrderService -> InventoryService: getUpdatedInventoryItem(inventoryItemIdFromPOItem)
+    InventoryService -> Database: Query InventoryItem
+    Database --> InventoryService: updatedInventoryItemDetails
+    InventoryService --> PurchaseOrderService: updatedInventoryItemDetails
+    PurchaseOrderService --> PurchaseOrderControllerFXML: POItemUpdateConfirmation, updatedInventoryItemDetails
+    PurchaseOrderControllerFXML --> PurchaseOrderFormView: Reflect update for item, potentially refresh stock display
+end
+
+User -> PurchaseOrderFormView: Finalizes Stock Receiving for the PO (e.g., marks PO as 'Received')
+PurchaseOrderFormView -> PurchaseOrderControllerFXML: handleFinalizePOReceiving(poId, newStatus) 'e.g., "Received"
+PurchaseOrderControllerFXML -> PurchaseOrderService: updatePurchaseOrderStatus(poId, newStatus)
+PurchaseOrderService -> Database: Update PurchaseOrder.status
+Database --> PurchaseOrderService: StatusUpdateConfirmation
+PurchaseOrderService --> PurchaseOrderControllerFXML: StatusUpdateConfirmation
+PurchaseOrderControllerFXML --> PurchaseOrderFormView: Display Confirmation Message
+@enduml
+3.3. Initiate WhatsApp Click-to-Chat Notification@startuml SequenceDiagram_WhatsAppClickToChat_Final_V3
+autonumber
+
+actor Cashier
+participant SourceView <<FXML View (Patient/Appt/SO)>>
+participant SourceController <<JavaFX Controller>>
+participant PatientService <<Service>>
+participant WhatsAppNotificationService <<Service>>
+participant DesktopActions <<Utility Class>>
+database Database <<PostgreSQL>>
+external WebBrowser
+
+Cashier -> SourceView: Clicks "Notify via WhatsApp" button (for a patient/appointment/order)
+SourceView -> SourceController: handleInitiateWhatsAppNotification(entityId, messageContextType)
+SourceController -> PatientService: getPatientContactDetailsAndConsent(patientIdFromEntity)
+PatientService -> Database: Fetch Patient (phoneNumber, whatsappOptIn)
+Database --> PatientService: patientContactData
+PatientService --> SourceController: patientContactData
+
+alt Patient has opted-in (patientContactData.whatsappOptIn == TRUE)
+    SourceController -> WhatsAppNotificationService: generateClickToChatLink(patientContactData.phoneNumber, messageContextType, relevantEntityData)
+    WhatsAppNotificationService --> SourceController: generatedWhatsAppLink (e.g., "https://wa.me/...")
+    ' Optional: Review message dialog
+    ' SourceController -> WhatsAppReviewDialog: show(generatedMessage)
+    ' WhatsAppReviewDialog --> Cashier: Displays message
+    ' Cashier -> WhatsAppReviewDialog: Confirms/Edits message
+    ' WhatsAppReviewDialog --> SourceController: confirmedMessage
+    ' SourceController -> DesktopActions: openWebLink(confirmedMessageLink) ' Using confirmed/edited link
+
+    SourceController -> DesktopActions: openWebLink(generatedWhatsAppLink)
+    DesktopActions -> WebBrowser: (OS command to open URL)
+    WebBrowser -->> DesktopActions: (Link opened, WhatsApp Web/Desktop launched by browser)
+    DesktopActions --> SourceController: (Success indication or void)
+    SourceController --> SourceView: Display "WhatsApp opened with pre-filled message. Please press Send in WhatsApp."
+else Patient has NOT opted-in
+    SourceController --> SourceView: Display "Patient has not consented to WhatsApp notifications."
+end
+@enduml
+3.4. Starting a New Shift@startuml SequenceDiagram_StartShift_Final_V3
+autonumber
+
+actor Cashier
+participant MainFrameView <<FXML View>>
+participant MainFrameController <<JavaFX Controller>>
+participant StartShiftDialog <<FXML View & Controller>>
+participant ShiftService <<Service>>
+participant UserSessionService <<Service>>
+database Database <<PostgreSQL>>
+
+Cashier -> MainFrameView: Clicks "Start Shift" button/menu item
+MainFrameView -> MainFrameController: handleStartShiftAction()
+MainFrameController -> StartShiftDialog: showAndWaitForOpeningFloat()
+StartShiftDialog --> Cashier: Prompts for Opening Cash Float
+Cashier -> StartShiftDialog: Enters OpeningFloat, Clicks "Start"
+StartShiftDialog --> MainFrameController: openingFloatAmount
+MainFrameController -> ShiftService: startNewShift(UserSessionService.getCurrentUser().getUserId(), openingFloatAmount)
+note right of ShiftService: Calls StartShift DB Procedure
+ShiftService -> Database: Execute StartShift(userId, openingFloat)
+Database --> ShiftService: newShiftId
+ShiftService --> MainFrameController: newShiftObject (or success with shiftId)
+MainFrameController -> UserSessionService: setActiveShift(newShiftObject)
+note right of UserSessionService: Calls set_app_shift(newShiftId) DB Procedure
+UserSessionService --> MainFrameController: (Shift context updated)
+MainFrameController -> MainFrameView: updateShiftStatusDisplay("Active", UserSessionService.getCurrentUser().getFullName(), newShiftObject.getStartTime())
+MainFrameController -> MainFrameView: updateUIControlsForActiveShift() ' Enable/disable relevant controls
+@enduml
+3.5. Ending a Shift@startuml SequenceDiagram_EndShift_Final_V3
+autonumber
+
+actor Cashier
+participant MainFrameView <<FXML View>>
+participant MainFrameController <<JavaFX Controller>>
+participant EndShiftDialog <<FXML View & Controller>>
+participant ShiftService <<Service>>
+participant UserSessionService <<Service>>
+participant ShiftReportView <<FXML View & Controller>>
+database Database <<PostgreSQL>>
+
+Cashier -> MainFrameView: Clicks "End Shift" button/menu item
+MainFrameView -> MainFrameController: handleEndShiftAction()
+MainFrameController -> UserSessionService: getCurrentShift()
+UserSessionService --> MainFrameController: activeShiftObject
+MainFrameController -> EndShiftDialog: showAndWaitForClosingDetails(activeShiftObject.getOpeningFloat())
+note right of EndShiftDialog : May pre-calculate and display expected cash based on transactions up to this point, for user reference before counting.
+EndShiftDialog --> Cashier: Prompts for Closing Cash Counted & Optional Notes
+Cashier -> EndShiftDialog: Enters closingCashCounted, notes, Clicks "End & View Report"
+EndShiftDialog --> MainFrameController: closingCashCounted, notes
+MainFrameController -> ShiftService: endCurrentShift(activeShiftObject.getShiftId(), UserSessionService.getCurrentUser().getUserId(), closingCashCounted, notes)
+note right of ShiftService: Calls EndShift DB Procedure which calculates totals (expected cash, variance)
+ShiftService -> Database: Execute EndShift(shiftId, userId, closingCash, notes)
+Database --> ShiftService: endedShiftObjectWithTotals (or success confirmation)
+ShiftService --> MainFrameController: endedShiftObjectWithTotals
+MainFrameController -> UserSessionService: clearActiveShift()
+note right of UserSessionService: Calls set_app_shift(NULL) DB Procedure
+UserSessionService --> MainFrameController: (Shift context cleared)
+MainFrameController -> MainFrameView: updateShiftStatusDisplay("No Active Shift")
+MainFrameController -> MainFrameView: updateUIControlsForNoActiveShift()
+MainFrameController -> ShiftReportView: displayShiftReport(endedShiftObjectWithTotals)
+ShiftReportView --> Cashier: Shows detailed shift report
+@enduml
+4. Activity Diagrams4.1. Inventory Replenishment Workflow@startuml ActivityDiagram_InventoryReplenishment_Final_V3
+|User (Admin/Cashier)|
+start
+:Review Low Stock Report / Identify Need;
+:Create New Purchase Order (PO);
+  note right: Enters Supplier Name
+:Add Items to PO;
+  repeat
+    :Search/Select Inventory Item;
+    :Enter Quantity Ordered;
+    :Enter Purchase Price Per Unit;
+  repeat while (More items to add?) is (yes)
+|System|
+:Save Purchase Order (Status 'Pending');
+note right: PO totalAmount automatically updated by DB trigger
+|User (Admin/Cashier)|
+:Send PO to Supplier (Manual External Step);
+|#AntiqueWhite|Later: Goods Received from Supplier|
+|User (Admin/Cashier)|
+:Find and Open Existing PO in System;
+:Select "Receive Stock" Action for the PO;
+  repeat
+    :For a specific PO Item, Enter Quantity Received;
+    |System|
+    :Validate Received Qty <= (Ordered Qty - Sum of Previously Received Qty for this item);
+    note right: DB Trigger trg_update_inventory_on_po_receipt executes:
+    :1. Update InventoryItem.quantityOnHand (+ newly received qty);
+    :2. Update InventoryItem.costPrice (to new purchase_price_per_unit from this POItem);
+    :Update POItem.quantityReceived (incrementally);
+  repeat while (More items being received against this PO in current session?) is (yes)
+|User (Admin/Cashier)|
+:Finalize PO Receiving Session;
+  if (All items in PO fully received (sum of all quantityReceived = quantityOrdered for all items)?) then (yes)
+    |System|
+    :Update PO Status to 'Received';
+  else (no, some items partially received or still pending)
+    |System|
+    :Update PO Status to 'Partially Received' (if any item received but not all fully), or keep 'Pending' based on business rules;
+  endif
+stop
+@enduml
+4.2. Sales Process Workflow (Context: Active Shift Required)@startuml ActivityDiagram_SalesProcess_Final_V3
+|Cashier with Active Shift|
+start
+:Login to System (Shift must be Active for sales);
+:Greet Patient;
+if (Existing Patient?) then (yes)
+  :Lookup Patient Record (Search by ID, Name, Phone);
+  if (New Prescription Needed for this Sale?) then (yes)
+    :Access/Record/Update Patient's Optical Diagnostics;
+  else (no)
+  endif
+else (no - New Patient)
+  :Register New Patient Information (including WhatsApp Consent);
+  :Record Optical Diagnostics (if applicable for new sale);
+endif
+:Start New Sales Order;
+  note right: Order automatically linked to active Shift & User.\nLink to Patient (or process as anonymous sale).
+
+repeat
+  :Select Item/Service Type to Add to Order;
+  if (Frame or Stock Item (Sunglasses, Solution, etc.)?) then (Frame/Stock)
+    :Search/Select Inventory Item from Stock List;
+    :Add Item to Order (Specify Quantity);
+    note right: Price defaults from InventoryItem.sellingPrice.\nQuantity checked against stock if real-time check enabled.
+  else if (Custom Spectacle Lenses?) then (Lenses)
+    :Select Associated Frame (if applicable, from order or patient's own);
+    :Enter/Confirm Patient's Prescription Details for Lenses (from Diagnostics or new entry);
+    :Select Lens Material, Shade, Reflection Type, and other attributes;
+    note right of System: System enforces business rules (e.g., Blue Cut => AR).
+    :System Calculates Custom Lens Price (based on selections/matrix/components);
+    :Add Custom Lenses to Order (as a SalesOrderItem);
+  else (Service)
+    :Select Service Type from Product List (where product.is_service=true);
+    if (Fixed Price Service?) then (Fixed)
+      :Add Service to Order;
+      note right: Price defaults from Product/Service definition.
+    else (Custom Quote Service)
+      :Enter Service Description and Custom Price for this instance;
+      :Add Service to Order;
+    endif
+  endif
+|System|
+:Update Sales Order Subtotal;
+note right: DB Trigger trg_update_sales_order_subtotal executes.\nUI reflects new subtotal.
+|Cashier with Active Shift|
+repeat while (More items to add to this order?) is (yes)
+
+if (Apply Discount? AND User has Permission 'CAN_GIVE_DISCOUNT') then (yes)
+  :Enter Discount Amount for the Order;
+  |System|
+  :Apply Discount to Sales Order;
+  note right: SalesOrder.totalAmount and balanceDue are recalculated (DB generated columns).\nUI reflects new totals.
+else (no)
+endif
+|System|
+:Display Final Total Amount Due;
+|Cashier with Active Shift|
+:Process Payment;
+  if (Partial Payment?) then (yes)
+    :Enter Amount Paid by Patient;
+  else (no - Full Payment)
+    :Confirm Full Amount to be Paid (equals Total Amount Due);
+  endif
+  :Select Payment Method (Cash/Bank Transaction);
+  if (Bank Transaction?) then (Bank)
+    :Select Bank Name from Predefined List;
+    :Enter Bank Transaction ID/Reference Number;
+  endif
+|System|
+:Application calls RecordPaymentAndUpdateSalesOrder DB procedure;
+note right: Updates SalesOrder.amountPaid and balanceDue.\nPayment linked to active Shift.
+|Cashier with Active Shift|
+:Print Payment Receipt / Sales Invoice;
+:Update Sales Order Status (e.g., 'Awaiting Lenses', 'Ready for Pickup', or directly to 'Completed' if all conditions met);
+
+if (Order is now to be marked 'Completed' (Goods Delivered/Services Rendered AND typically fully paid)?) then (yes)
+  |System|
+  :Application calls ProcessOrderCompletionStockUpdate DB procedure;
+  :Deduct stock for sold inventory items from InventoryItem.quantityOnHand;
+  :Update Sales Order Status to 'Completed' in DB;
+else if (Order is to be Abandoned? AND User has Permission 'PROCESS_ABANDONED_ORDERS') then (Abandoned)
+    |Cashier with Active Shift|
+    :Initiate Abandon Order Process from UI;
+    :UI prompts to Select Items to Restock (if any);
+    |System|
+    :Application calls ProcessAbandonedOrder DB procedure (with restock list);
+    :Update Sales Order Status to 'Abandoned';
+    :Adjust stock for restocked items;
+    :Log financial loss for unrecoverable goods as an Expense (linked to current shift);
+else (Order remains in another status, e.g., 'Ready for Pickup')
+endif
+
+if (Delivery Appointment Required and not yet scheduled?) then (yes)
+  :Schedule Delivery Appointment for the Sales Order;
+  |System|
+  :Link Appointment record to Sales Order;
+endif
+stop
+@enduml
+4.3. Shift Lifecycle Management@startuml ActivityDiagram_ShiftLifecycle_Final_V3
+|User (Cashier/Admin)|
+start
+:Launch Basariat POS Application;
+:Perform Login;
+|System|
+:Application calls set_app_user() DB procedure (sets app.current_user_id);
+if (Interrupted Shift Detected for this User (status 'Active' or 'Paused' from previous session)?) then (yes)
+  |User (Cashier/Admin)|
+  :System Prompts: "Interrupted shift found from [Timestamp]. Resume or Forcibly End?";
+  if (User chooses "Resume Shift"?) then (Resume)
+    |System|
+    :Application calls ResumeShift DB Procedure (passes shift_id, user_id);
+    :Shift Status updated to 'Active' in DB;
+    :ShiftPauseLog updated if was 'Paused';
+    :Application calls set_app_shift() DB procedure (sets app.current_shift_id);
+    :Update UI to show "Shift Active";
+    -> Shift Active State;
+  else (User chooses "Forcibly End Shift")
+    |User (Cashier/Admin)|
+    note right: This action might require Admin rights or specific handling protocols.
+    :UI Prompts for Closing Cash Counted (if possible, or based on last known state);
+    :Enter Closing Cash Counted;
+    :Enter Notes explaining interruption and forced closure;
+    |System|
+    :Application calls EndShift DB Procedure (passes shift_id, user_id, closing_cash, notes, possibly an 'interrupted_closure' flag);
+    :Shift Status updated to 'Ended' in DB;
+    :Expected Cash & Variance Calculated by DB Procedure;
+    :Application calls set_app_shift(NULL) DB procedure;
+    :Generate/Display Shift Report for the forcibly ended shift;
+    :Update UI to show "No Active Shift";
+    -> No Active Shift State;
+  endif
+else (no interrupted shift for this user)
+  :Update UI to show "No Active Shift";
+  -> No Active Shift State;
+endif
+
+state "No Active Shift State" as NoActiveShift
+state "Shift Active State" as ShiftActive
+state "Shift Paused State" as ShiftPaused
+
+NoActiveShift --> ===MAIN_CHOICE===
+ShiftActive --> ===MAIN_CHOICE===
+ShiftPaused --> ===MAIN_CHOICE===
+
+===MAIN_CHOICE=== --> if (User Action: "Start Shift" AND Current State is NoActiveShift?) then (Start)
+  |User (Cashier/Admin)|
+  :UI Prompts for Opening Cash Float;
+  :Enter Opening Cash Float;
+  |System|
+  :Application calls StartShift DB Procedure (passes user_id, opening_float);
+  :Shift Record Created (Status 'Active', start_time=NOW());
+  :Application calls set_app_shift(new_shift_id) DB procedure;
+  :Update UI to show "Shift Active: [User] - Started: [Time]";
+  --> ShiftActive;
+else if (User Action: "Pause Shift" AND Current State is ShiftActive?) then (Pause)
+  |System|
+  :Application calls PauseShift DB Procedure (passes current_shift_id, user_id);
+  :Shift Status updated to 'Paused' in DB;
+  :ShiftPauseLog entry created with paused_at time;
+  :Application calls set_app_shift(NULL) DB procedure;
+  :Update UI to show "Shift Paused: [User] - Started: [Time]";
+  --> ShiftPaused;
+else if (User Action: "Resume Shift" AND Current State is ShiftPaused?) then (Resume)
+  |System|
+  :Application calls ResumeShift DB Procedure (passes current_shift_id, user_id);
+  :Shift Status updated to 'Active' in DB;
+  :Last ShiftPauseLog entry updated with resumed_at time;
+  :Application calls set_app_shift(current_shift_id) DB procedure;
+  :Update UI to show "Shift Active: [User] - Started: [Time]";
+  --> ShiftActive;
+else if (User Action: "End Shift" AND (Current State is ShiftActive OR Current State is ShiftPaused)?) then (End)
+  |User (Cashier/Admin)|
+  :UI Prompts for Closing Cash Counted;
+  :Enter Closing Cash Counted;
+  :Enter Optional Shift Notes;
+  |System|
+  :Application calls EndShift DB Procedure (passes current_shift_id, user_id, closing_cash, notes);
+  :DB Procedure Calculates Expected Cash & Variance;
+  :Shift Status updated to 'Ended', end_time=NOW() in DB;
+  :Application calls set_app_shift(NULL) DB procedure;
+  :Generate/Display Detailed Shift Report for the ended shift;
+  :Update UI to show "No Active Shift";
+  --> NoActiveShift;
+else if (User attempts Financial Transaction (Sale, Payment, Cash Expense)?) then (Attempt Transaction)
+  if (Current State is ShiftActive?) then (Transaction Allowed)
+    |System|
+    :Process Financial Transaction (details in other Activity Diagrams);
+    :DB Trigger check_active_shift_for_transaction ensures transaction is linked to Active Shift ID;
+    --> ShiftActive;
+  else (Transaction Blocked)
+    |System|
+    :Block Transaction Attempt at UI level;
+    :Display informative message: "No Active Shift. Please start or resume a shift to process financial transactions.";
+    --> ===MAIN_CHOICE===; ' Return to current state (NoActiveShift or ShiftPaused)
+  endif
+else if (User Action: "Logout" or "Exit Application"?) then (Logout/Exit)
+  |System|
+  if (Current State is ShiftActive OR Current State is ShiftPaused?) then (Mark Interrupted in DB)
+    :Update current Shift Status to 'Interrupted' in DB;
+    note right: This is crucial if user exits without proper shift end.\nHelps in detection at next login.
+  endif
+  :Application calls set_app_shift(NULL) DB procedure (if not already null);
+  :Application calls set_app_user(NULL) DB procedure;
+  :Close Application / Return to Login Screen;
+  stop;
+else (Other non-financial UI Action or Idle)
+  ' Stay in current state
+  --> ===MAIN_CHOICE===;
+endif
+@enduml
+5. Component Diagram@startuml ComponentDiagram_Final_V3
+skinparam componentStyle uml2
+title Basariat POS - Component Diagram
+
+package "Basariat POS Client Application (JavaFX)" <<Java Archive (JAR) / Native Bundle>> {
+  [UI Layer (JavaFX Views & FXML Controllers)] <<Component>> as UI_Layer
+  [Application Logic Layer (UI Event Handling, View Models/Presenters, UI Controllers)] <<Component>> as AppLogic_Layer
+  [Business Logic Layer (Services, Domain Rules, Workflow Orchestration)] <<Component>> as Business_Layer
+  [Data Access Layer (Repositories, jOOQ Integration, DB Procedure Calls)] <<Component>> as DAL_Layer
+  [Domain Model (Entities, DTOs, Value Objects)] <<Component>> as Model_Layer
+  [Configuration & Utilities (AppConfig, Session Mgmt, i18n, General Utils, WhatsApp Utils)] <<Component>> as ConfigUtil_Layer
+  [Help & About Resources (Bundled HTML/PDF, Images, Static Info)] <<Resource>> as HelpResources
+
+  UI_Layer --> AppLogic_Layer : invokes actions, observes data
+  AppLogic_Layer --> Business_Layer : uses business services
+  AppLogic_Layer --> ConfigUtil_Layer : uses session, i18n, config
+  Business_Layer --> DAL_Layer : uses repositories, calls DB procedures
+  Business_Layer --> Model_Layer : operates on domain objects
+  DAL_Layer --> Model_Layer : maps database records to/from domain objects
+  ConfigUtil_Layer --> DAL_Layer : (e.g., AppSettingsRepository for WhatsApp templates)
+  UI_Layer --> HelpResources : displays help/about content
+  UI_Layer ..> Model_Layer : (binds to ViewModels or DTOs for display)
+}
+
+package "External Libraries & Runtimes (Bundled or Prerequisite)" {
+  [JavaFX SDK (OpenJFX Modules)] <<Library>>
+  [jOOQ Runtime Library] <<Library>>
+  [PostgreSQL JDBC Driver] <<Library>>
+  [Logging Framework (e.g., SLF4J + Logback)] <<Library>>
+  [Reporting Library (e.g., Apache PDFBox for PDF Export - Optional)] <<Library>>
+  [CSV Library (e.g., Apache Commons CSV for CSV Export - Optional)] <<Library>>
+  [Testing Frameworks (JUnit 5, Mockito - Dev Time)] <<Library>>
+}
+
+UI_Layer --|> [JavaFX SDK] : built using
+DAL_Layer --|> [jOOQ Runtime Library] : utilizes for DB interaction
+DAL_Layer --|> [PostgreSQL JDBC Driver] : utilizes for DB connection
+AppLogic_Layer --|> [Logging Framework (e.g., SLF4J + Logback)] : uses for logging
+Business_Layer --|> [Logging Framework (e.g., SLF4J + Logback)] : uses for logging
+ConfigUtil_Layer --|> [Reporting Library (e.g., Apache PDFBox - Optional)] : uses (if client-side report generation to PDF)
+ConfigUtil_Layer --|> [CSV Library (e.g., Apache Commons CSV - Optional)] : uses (if client-side CSV generation)
+
+database "PostgreSQL Database Server (On-Premises)" as DB_Server {
+  [OpticalCenterDB (Schema, Data, Stored Procedures, Functions, Triggers)] <<Database>> as DB_Instance
+}
+
+DAL_Layer ..> DB_Instance : (Interacts via JDBC)
+[PostgreSQL JDBC Driver] ..> DB_Instance : (Mediates direct DB connection)
+
+note left of UI_Layer
+  User interacts primarily
+  with the UI Layer of the
+  Basariat POS Client Application.
+end note
+@enduml
+6. Deployment Diagram@startuml DeploymentDiagram_Final_V3
+title Basariat POS - Deployment Diagram
+
+node "Optical Center Server PC (On-Premises)" as ServerPC {
+  artifact "Operating System (e.g., Windows Server, Linux)" as Server_OS
+  artifact "PostgreSQL DBMS Software" as PG_DBMS_Software
+  node "PostgreSQL Server Instance" as PG_Server_Instance {
+    PG_DBMS_Software -- AppDB_Artifact
+    artifact "OpticalCenterDB_Datafiles" as AppDB_Artifact {
+      database "Basariat POS Schema & Data" as DB_Schema
+    }
+  }
+  Server_OS -- PG_DBMS_Software
+}
+
+node "Cashier Station PC 1 (Client)" as ClientPC1 {
+  artifact "Operating System (e.g., Windows 10/11)" as Client1_OS
+  artifact "JRE 21 (Bundled, with JavaFX Modules)" as JRE_Client1
+  artifact "BasariatPOS_Client_App (Native Bundle / JAR)" as App_Client1 {
+    component UI_Layer_C1 <<JavaFX Views & Controllers>>
+    component AppLogic_Layer_C1
+    component Business_Layer_C1
+    component DAL_Layer_C1
+    component Help_Resources_C1 <<Bundled Files>>
+  }
+  Client1_OS -- JRE_Client1
+  App_Client1 .. JRE_Client1 : runs on
+}
+
+node "Admin/Manager PC (Client)" as ClientPCAdmin {
+  artifact "Operating System (e.g., Windows 10/11)" as Admin_OS
+  artifact "JRE 21 (Bundled, with JavaFX Modules)" as JRE_Admin
+  artifact "BasariatPOS_Client_App (Native Bundle / JAR)" as App_Admin {
+    component UI_Layer_Admin <<JavaFX Views & Controllers>>
+    component AppLogic_Layer_Admin
+    component Business_Layer_Admin
+    component DAL_Layer_Admin
+    component Help_Resources_Admin <<Bundled Files>>
+  }
+  Admin_OS -- JRE_Admin
+  App_Admin .. JRE_Admin : runs on
+}
+
+node "Shared Network Printer" as NetworkPrinter {
+  artifact "Printer Driver (OS Managed)"
+}
+
+' Communication Paths
+ClientPC1 -- AppDB_Artifact : <<JDBC connection over LAN (TCP/IP, Port 5432)>>
+ClientPCAdmin -- AppDB_Artifact : <<JDBC connection over LAN (TCP/IP, Port 5432)>>
+
+ClientPC1 -- NetworkPrinter : <<Print Job (via OS Print Spooler)>>
+ClientPCAdmin -- NetworkPrinter : <<Print Job (via OS Print Spooler)>>
+' ServerPC might also print if an admin uses an app instance there for reports
+' ServerPC -- NetworkPrinter : <<Print Job (OS mediated, if app used on server for admin)>>
+
+note right of ClientPC1
+  Requires Internet access
+  for WhatsApp Click-to-Chat feature.
+  This uses the OS default web browser,
+  which then launches WhatsApp Web/Desktop client.
+end note
+
+cloud "Internet" as Internet {
+  node "WhatsApp Servers" as WhatsApp_Servers
+}
+ClientPC1 -- Internet : (For WhatsApp Click-to-Chat via Browser)
+ClientPCAdmin -- Internet : (For WhatsApp Click-to-Chat via Browser)
+
+
+note "Local Area Network (LAN) of Optical Center" as LAN_Boundary
+ClientPC1 -- LAN_Boundary
+ClientPCAdmin -- LAN_Boundary
+ServerPC -- LAN_Boundary
+NetworkPrinter -- LAN_Boundary
+@enduml
+7. Package Diagram (Java Application Structure - Conceptual)@startuml PackageDiagram_Final_EN_Complete_V3
+skinparam packageStyle rectangle
+title Basariat POS - Conceptual Java Package Structure (com.basariatpos)
+
+package "com.basariatpos" <<Root>> {
+  package "main" <<Application Entry Point & Bootstrap>> {
+    class AppLauncher ' Main class, extends javafx.application.Application, handles application startup, initial scene loading.
+  }
+  package "ui" <<Presentation Layer - JavaFX Components>> {
+    package "controller" <<FXML Controllers & UI Logic>> {
+      abstract class BaseController { /* Optional: Common functionalities for controllers like i18n access, alert display */ }
+      class MainFrameController extends BaseController ' Controls the main application window, navigation, global status (shift display).
+      class LoginController extends BaseController ' Handles login screen logic and user authentication calls.
+      class CenterProfileSetupController extends BaseController ' Controller for the initial center profile setup wizard.
+      class PatientControllerFXML extends BaseController ' Manages patient views (list, form) and interactions.
+      class SalesOrderControllerFXML extends BaseController ' Manages sales order views, item addition, payment processing UI.
+      class ShiftOperationsControllerFXML extends BaseController { /* Manages UI interactions for Start/End/Pause Shift Dialogs */ }
+      class ShiftReportViewController extends BaseController ' Displays shift reports.
+      class InventoryControllerFXML extends BaseController { /* Manages product, category, inventory item views */ }
+      class PurchaseOrderControllerFXML extends BaseController { /* Manages purchase order views and stock receiving UI */ }
+      class ExpenseControllerFXML extends BaseController { /* Manages expense entry and listing views */ }
+      class AppointmentControllerFXML extends BaseController { /* Manages appointment scheduling and views */ }
+      class AdminSettingsController extends BaseController { /* Manages various admin settings (users, permissions, categories, banks, app settings) */ }
+      class AuditLogViewController extends BaseController { /* For admins to view audit logs */ }
+      class HelpControllerUI extends BaseController { /* Manages display of help content (e.g., in WebView) and about dialog */ }
+    }
+    package "view" <<FXML Files & Custom UI Controls Design>> {
+      ' This package would contain all FXML files (e.g., MainFrame.fxml, LoginView.fxml, PatientForm.fxml, StartShiftDialog.fxml).
+      ' May also contain custom JavaFX UI controls if developed (e.g., specialized input fields).
+    }
+    package "utilui" <<UI Helper Utilities & Styles>> {
+      class AlertManager ' For displaying standardized alerts, confirmation dialogs, error messages.
+      class FormValidatorFX ' UI-side input validation helpers and visual feedback.
+      class TableCellFormatters ' Custom cell value factories and formatters for TableView columns.
+      class ThemeManager ' Applies CSS themes and potentially allows theme switching if supported.
+      ' CSS files for theming the application would reside here or in a resources folder.
+    }
+  }
+  package "service" <<Business Logic Layer (BLL)>> {
+    interface Service {} ' Optional marker interface for all service classes.
+    class UserSessionService implements Service { /* Manages current logged-in user & active shift context within Java app, calls DB session procedures */ }
+    class CenterProfileService implements Service { /* Business logic for managing center profile information */ }
+    class UserService implements Service { /* Business logic for user management, authentication, permissions */ }
+    class ShiftService implements Service { /* Business logic for all shift operations: starting, ending, pausing, resuming, reconciliation, interruption handling */ }
+    class PatientService implements Service { /* Business logic for patients and their optical diagnostics */ }
+    class InventoryService implements Service { /* Business logic for inventory items, stock levels, stock adjustments */ }
+    class ProductService implements Service { /* Business logic for master products and product categories */ }
+    class SalesOrderService implements Service { /* Business logic for sales orders, including custom lens pricing, abandoned order processing */ }
+    class PaymentService implements Service { /* Business logic for processing payments */ }
+    class PurchaseOrderService implements Service { /* Business logic for purchase orders and receiving stock */ }
+    class ExpenseService implements Service { /* Business logic for managing expenses */ }
+    class AppointmentService implements Service { /* Business logic for appointments */ }
+    class ReportGenerationService implements Service { /* Prepares data for and generates various reports by calling DAL/DB functions */ }
+    class AuditLogService implements Service { /* Business logic related to accessing and filtering audit logs */ }
+    class WhatsAppNotificationService implements Service { /* Handles Click-to-Chat link generation logic, retrieves templates */ }
+  }
+  package "repository" <<Data Access Layer (DAL)>> {
+    interface Repository<T, ID> {} ' Optional generic repository interface with common CRUD methods.
+    class AbstractRepository {} ' Optional base class with common jOOQ/DB connection logic.
+    class CenterProfileRepository implements Repository {}
+    class UserRepository implements Repository {}
+    class UserPermissionRepository implements Repository {}
+    class ShiftRepository implements Repository {}
+    class ShiftPauseLogRepository implements Repository {}
+    class PatientRepository implements Repository {}
+    class OpticalDiagnosticRepository implements Repository {}
+    class ProductCategoryRepository implements Repository {}
+    class ProductRepository implements Repository {}
+    class InventoryItemRepository implements Repository {}
+    class PurchaseOrderRepository implements Repository {}
+    class SalesOrderRepository implements Repository {}
+    class PaymentRepository implements Repository {}
+    class ExpenseRepository implements Repository {}
+    class AppointmentRepository implements Repository {}
+    class AuditLogRepository implements Repository {}
+    class ApplicationSettingsRepository implements Repository {}
+    class BankNameRepository implements Repository {}
+    class ExpenseCategoryRepository implements Repository {}
+  }
+  package "model" <<Domain Model / Data Transfer Objects (DTOs)>> {
+    class CenterProfileDTO {} ' Data Transfer Objects or domain entities used between layers.
+    class UserDTO {}          ' These might be simple POJOs or Java Records.
+    class ShiftDTO {}         ' Alternatively, jOOQ's generated Record classes can be used directly,
+    class PatientDTO {}       ' especially between DAL and Service layers. DTOs are often useful
+    class SalesOrderDTO {}    ' for tailoring data specifically for UI needs or service method signatures.
+    class ReportDataWrapper {} ' Generic wrapper for various report data structures passed to UI.
+    ' Other DTOs as needed (e.g., InventoryItemDTO, PaymentDTO, ExpenseDTO, AppointmentDTO).
+  }
+  package "config" <<Configuration & Core Application Setup>> {
+    class AppConfigLoader { /* Loads application settings from properties files or DB (via ApplicationSettingsRepository) */ }
+    class DBManager { /* Manages database connection pool (e.g., HikariCP) and provides jOOQ DSLContext */ }
+  }
+  package "util" <<General Purpose Non-UI Utilities>> {
+    class DateUtils { /* Date and time formatting, parsing, and manipulation utilities */ }
+    class StringUtils { /* String manipulation, validation, and encoding/decoding utilities */ }
+    class ValidationUtils { /* Generic data validation routines not specific to UI */ }
+    class FileUtils { /* Helper methods for file operations (e.g., accessing logo image path, help documents) */ }
+    class DesktopActions { /* Utility for opening web browser links (e.g., for WhatsApp Click-to-Chat) using java.awt.Desktop or JavaFX HostServices */ }
+    class PasswordHasher { /* Utility for hashing and verifying passwords using bcrypt or Argon2 */ }
+  }
+  package "i18n" <<Internationalization & Localization Support>> {
+    class LocaleManager { /* Manages the current application locale (language and region) */ }
+    class MessageProvider { /* Provides access to localized strings from ResourceBundles based on current locale */ }
+  }
+  package "db.generated" <<jOOQ Generated Code - External to Manual Code>> {
+    ' This package (or a similar one defined by jOOQ configuration) would contain all
+    ' Java classes automatically generated by the jOOQ tool from the PostgreSQL database schema.
+    ' This includes classes for tables, records, UDTs, sequences, routines (procedures/functions), etc.
+  }
+}
+
+' Key Dependencies (Illustrative, not exhaustive - showing layer interactions)
+com.basariatpos.ui.controller --> com.basariatpos.service
+com.basariatpos.service --> com.basariatpos.repository
+com.basariatpos.repository --> com.basariatpos.db.generated ' (Uses jOOQ generated classes for DB mapping)
+com.basariatpos.repository --> com.basariatpos.config.DBManager ' (For obtaining jOOQ DSLContext / DB Connection)
+com.basariatpos.service --> com.basariatpos.model ' (Operates on DTOs/Domain Objects if used)
+com.basariatpos.ui.controller --> com.basariatpos.model ' (Uses DTOs for binding to JavaFX views if applicable)
+com.basariatpos.ui --> com.basariatpos.i18n.MessageProvider ' For localized UI text
+com.basariatpos.ui.utilui --> com.basariatpos.config.AppConfigLoader ' For theme/display settings if any
+com.basariatpos.main.AppLauncher --> com.basariatpos.config.AppConfigLoader
+com.basariatpos.main.AppLauncher --> com.basariatpos.ui.controller.LoginController ' To start the UI flow
+com.basariatpos.service.UserSessionService --> com.basariatpos.config.DBManager ' For calling set_app_user/set_app_shift DB procedures
+com.basariatpos.service --|> com.basariatpos.util ' General utilities used by services
+com.basariatpos.ui --|> com.basariatpos.util ' General utilities used by UI
+
+note "External Libraries (Managed by Maven/Gradle)" as ExtLib <<Frame>>
+ExtLib ..> com.basariatpos : (Used by various packages as dependencies)
+package "External Libraries" <<Frame>> {
+  [JavaFX SDK (OpenJFX)]
+  [jOOQ Runtime & Codegen Libraries]
+  [PostgreSQL JDBC Driver]
+  [Logging Framework (SLF4J API + Logback Implementation)]
+  [Reporting Library (e.g., Apache PDFBox for PDF Export - Optional)]
+  [CSV Library (e.g., Apache Commons CSV for CSV Export - Optional)]
+  [Testing Frameworks (JUnit 5 for unit/integration tests, Mockito for mocking)]
+  [Password Hashing Library (e.g., BCrypt or Argon2 library)]
+}
+@enduml
