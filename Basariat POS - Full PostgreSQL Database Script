@@ -1,0 +1,988 @@
+-- Basariat POS - Full PostgreSQL Database Script
+-- Version: 1.2 (Final comprehensive version)
+-- Last Updated: 2025-05-24
+
+-- Drop existing objects if they exist (optional, for development - uncomment with caution)
+/*
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
+*/
+
+--------------------------------------------------------------------------------
+-- Utility Functions
+--------------------------------------------------------------------------------
+
+-- Function to update 'updated_at' timestamp on relevant tables
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to get current application user ID (to be set by the application session)
+CREATE OR REPLACE FUNCTION get_current_app_user_id()
+RETURNS INT AS $$
+DECLARE
+  v_user_id INT;
+BEGIN
+  BEGIN
+    v_user_id := current_setting('app.current_user_id', TRUE)::INT; -- TRUE makes it not error if not found, returns NULL
+  EXCEPTION WHEN OTHERS THEN
+    v_user_id := NULL; -- Default to NULL if not set or invalid
+  END;
+  -- Optionally, log or raise a warning if v_user_id is NULL when expected
+  -- IF v_user_id IS NULL THEN
+  --   RAISE WARNING 'Application context: app.current_user_id is not set.';
+  -- END IF;
+  RETURN v_user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Procedure to set current application user ID for the session (called by application on login)
+CREATE OR REPLACE PROCEDURE set_app_user(p_user_id INT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    PERFORM set_config('app.current_user_id', p_user_id::TEXT, false); -- 'false' means session-local setting
+END;
+$$;
+
+-- Procedure to set current active shift ID for the session (called by application on shift start/resume)
+CREATE OR REPLACE PROCEDURE set_app_shift(p_shift_id INT)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF p_shift_id IS NULL THEN
+        PERFORM set_config('app.current_shift_id', NULL, false);
+    ELSE
+        PERFORM set_config('app.current_shift_id', p_shift_id::TEXT, false);
+    END IF;
+END;
+$$;
+
+-- Function to get current active shift ID from the session
+CREATE OR REPLACE FUNCTION get_current_app_shift_id()
+RETURNS INT AS $$
+DECLARE
+  v_shift_id INT;
+BEGIN
+  BEGIN
+    v_shift_id := current_setting('app.current_shift_id', TRUE)::INT;
+  EXCEPTION WHEN OTHERS THEN
+    v_shift_id := NULL;
+  END;
+  RETURN v_shift_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+--------------------------------------------------------------------------------
+-- Table Definitions
+--------------------------------------------------------------------------------
+
+-- CenterProfile: Stores details of the optical center using the software
+CREATE TABLE CenterProfile (
+    profile_id INT PRIMARY KEY DEFAULT 1, -- Assuming a single profile per installation
+    center_name VARCHAR(255) NOT NULL,
+    address_line1 TEXT,
+    address_line2 TEXT,
+    city VARCHAR(100),
+    country VARCHAR(100),
+    postal_code VARCHAR(20),
+    phone_primary VARCHAR(30) NOT NULL,
+    phone_secondary VARCHAR(30),
+    email_address VARCHAR(255),
+    website VARCHAR(255),
+    logo_image_path VARCHAR(512), -- Path to local image file, managed by application
+    tax_identifier VARCHAR(100),
+    currency_symbol VARCHAR(10) DEFAULT 'SDG', -- Default, configurable during setup
+    currency_code VARCHAR(5) DEFAULT 'SDG',   -- Default, configurable during setup
+    receipt_footer_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT profile_id_singleton CHECK (profile_id = 1)
+);
+
+-- Users: Stores user accounts for the application
+CREATE TABLE Users (
+    user_id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL, -- Store hashed passwords only
+    full_name VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('Admin', 'Cashier')),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- UserPermissions: Manages granular permissions for users beyond their roles
+CREATE TABLE UserPermissions (
+    permission_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES Users(user_id) ON DELETE CASCADE,
+    permission_name VARCHAR(100) NOT NULL, -- e.g., 'CAN_GIVE_DISCOUNT', 'VIEW_FINANCIAL_REPORTS'
+    is_granted BOOLEAN DEFAULT TRUE,
+    UNIQUE (user_id, permission_name)
+);
+
+-- Shifts: Manages work shifts for users, typically cashiers
+CREATE TABLE Shifts (
+    shift_id SERIAL PRIMARY KEY,
+    started_by_user_id INT NOT NULL REFERENCES Users(user_id),
+    start_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP WITH TIME ZONE, -- Null if shift is active, paused, or interrupted
+    status VARCHAR(20) NOT NULL CHECK (status IN ('Active', 'Paused', 'Ended', 'Interrupted')),
+    opening_float DECIMAL(12,2) NOT NULL, -- Cash at start of shift
+    closing_cash_counted DECIMAL(12,2),    -- Cash counted by user at end of shift
+    expected_cash_in_drawer DECIMAL(12,2), -- Calculated at end of shift
+    cash_variance DECIMAL(12,2),           -- Calculated: closing_cash_counted - expected_cash_in_drawer
+    notes TEXT,                            -- General notes for the shift
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+-- Index to ensure only one 'Active' or 'Paused' shift per user at any given time
+CREATE UNIQUE INDEX idx_unique_active_paused_shift_per_user
+ON Shifts (started_by_user_id)
+WHERE status IN ('Active', 'Paused');
+
+-- ShiftPauseLog: Tracks pause and resume events within a single shift
+CREATE TABLE ShiftPauseLog (
+    shift_pause_log_id SERIAL PRIMARY KEY,
+    shift_id INT NOT NULL REFERENCES Shifts(shift_id) ON DELETE CASCADE,
+    paused_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resumed_at TIMESTAMP WITH TIME ZONE, -- Null if currently paused
+    paused_by_user_id INT NOT NULL REFERENCES Users(user_id)
+);
+
+-- Patients: Stores patient information
+CREATE TABLE Patients (
+    patient_id SERIAL PRIMARY KEY,
+    system_patient_id VARCHAR(50) UNIQUE NOT NULL, -- Application-generated unique ID
+    full_name VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(30) NOT NULL, -- Ensure this can store numbers with country code for WhatsApp
+    address TEXT, -- Optional
+    whatsapp_opt_in BOOLEAN DEFAULT FALSE, -- Consent for WhatsApp notifications
+    created_by_user_id INT REFERENCES Users(user_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- OpticalDiagnostics: Stores patient's optical prescription history
+CREATE TABLE OpticalDiagnostics (
+    diagnostic_id SERIAL PRIMARY KEY,
+    patient_id INT NOT NULL REFERENCES Patients(patient_id) ON DELETE CASCADE,
+    diagnostic_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    is_contact_lens_rx BOOLEAN DEFAULT FALSE,
+    contact_lens_details TEXT, -- For specific CL brand/type if is_contact_lens_rx is true
+    od_sph_dist DECIMAL(5,2), od_cyl_dist DECIMAL(5,2), od_axis_dist INT, -- Right Eye Distance
+    os_sph_dist DECIMAL(5,2), os_cyl_dist DECIMAL(5,2), os_axis_dist INT, -- Left Eye Distance
+    od_add DECIMAL(5,2), os_add DECIMAL(5,2), -- Near Addition
+    ipd DECIMAL(5,2), -- Interpupillary Distance
+    remarks TEXT,
+    created_by_user_id INT REFERENCES Users(user_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    -- No updated_at here as diagnostics are typically point-in-time records, new record for new Rx
+);
+
+-- ProductCategories: Defines categories for products and services
+CREATE TABLE ProductCategories (
+    category_id SERIAL PRIMARY KEY,
+    category_name_en VARCHAR(100) UNIQUE NOT NULL,
+    category_name_ar VARCHAR(100) UNIQUE NOT NULL
+);
+
+-- Products: Master definition of products or services offered
+CREATE TABLE Products (
+    product_id SERIAL PRIMARY KEY,
+    product_code VARCHAR(100) UNIQUE, -- Optional SKU/Internal Code
+    product_name_en VARCHAR(255) NOT NULL,
+    product_name_ar VARCHAR(255) NOT NULL,
+    category_id INT NOT NULL REFERENCES ProductCategories(category_id),
+    description_en TEXT,
+    description_ar TEXT,
+    is_service BOOLEAN DEFAULT FALSE NOT NULL, -- True if this is a service item
+    is_stock_item BOOLEAN DEFAULT TRUE NOT NULL, -- False for pure services that don't have inventory
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- InventoryItems: Specific trackable instances or variants of products with stock levels
+CREATE TABLE InventoryItems (
+    inventory_item_id SERIAL PRIMARY KEY,
+    product_id INT NOT NULL REFERENCES Products(product_id) ON DELETE CASCADE,
+    brand_name VARCHAR(100),
+    item_specific_name_en VARCHAR(255), -- e.g., "Ray-Ban Aviator RB3025 Gold 58mm"
+    item_specific_name_ar VARCHAR(255),
+    attributes JSONB, -- For variations like color, size, strength, lens parameters etc.
+    quantity_on_hand INT NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
+    selling_price DECIMAL(10,2) NOT NULL,
+    cost_price DECIMAL(10,2), -- Last purchase cost price
+    min_stock_level INT DEFAULT 0,
+    unit_of_measure VARCHAR(50) DEFAULT 'Unit', -- e.g., 'Unit', 'Box', 'Pair', 'Bottle'
+    is_active BOOLEAN DEFAULT TRUE, -- To discontinue items without deleting
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- PurchaseOrders: Records orders placed with suppliers
+CREATE TABLE PurchaseOrders (
+    purchase_order_id SERIAL PRIMARY KEY,
+    order_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    supplier_name VARCHAR(255), -- Free text as requested
+    total_amount DECIMAL(12,2) DEFAULT 0.00, -- Will be updated by trigger based on items
+    status VARCHAR(50) NOT NULL CHECK (status IN ('Pending', 'Received', 'Cancelled')),
+    created_by_user_id INT NOT NULL REFERENCES Users(user_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- PurchaseOrderItems: Line items for each PurchaseOrder
+CREATE TABLE PurchaseOrderItems (
+    po_item_id SERIAL PRIMARY KEY,
+    purchase_order_id INT NOT NULL REFERENCES PurchaseOrders(purchase_order_id) ON DELETE CASCADE,
+    inventory_item_id INT NOT NULL REFERENCES InventoryItems(inventory_item_id),
+    quantity_ordered INT NOT NULL CHECK (quantity_ordered > 0),
+    quantity_received INT DEFAULT 0 CHECK (quantity_received >=0),
+    purchase_price_per_unit DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) GENERATED ALWAYS AS (quantity_ordered * purchase_price_per_unit) STORED
+);
+
+-- SalesOrders: Records customer sales orders
+CREATE TABLE SalesOrders (
+    sales_order_id SERIAL PRIMARY KEY,
+    patient_id INT REFERENCES Patients(patient_id), -- Nullable for anonymous sales
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('Pending', 'Awaiting Lenses', 'Ready for Pickup', 'Completed', 'Cancelled', 'Abandoned')),
+    subtotal_amount DECIMAL(12,2) DEFAULT 0.00, -- Sum of item subtotals before discount
+    discount_amount DECIMAL(12,2) DEFAULT 0.00,
+    total_amount DECIMAL(12,2) GENERATED ALWAYS AS (ROUND(subtotal_amount - discount_amount, 2)) STORED,
+    amount_paid DECIMAL(12,2) DEFAULT 0.00,
+    balance_due DECIMAL(12,2) GENERATED ALWAYS AS (ROUND(subtotal_amount - discount_amount - amount_paid, 2)) STORED,
+    created_by_user_id INT NOT NULL REFERENCES Users(user_id),
+    shift_id INT REFERENCES Shifts(shift_id), -- Link to shift, NOT NULL for user-processed orders
+    delivery_appointment_id INT UNIQUE, -- FK constraint added after Appointments table creation
+    remarks TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- SalesOrderItems: Line items for each SalesOrder
+CREATE TABLE SalesOrderItems (
+    so_item_id SERIAL PRIMARY KEY,
+    sales_order_id INT NOT NULL REFERENCES SalesOrders(sales_order_id) ON DELETE CASCADE,
+    inventory_item_id INT REFERENCES InventoryItems(inventory_item_id), -- Link if selling a stock item
+    service_product_id INT REFERENCES Products(product_id), -- Link if selling a service
+    description VARCHAR(255), -- Auto-filled from product/service or custom for repairs
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL, -- Price at time of sale
+    item_subtotal DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    prescription_details JSONB, -- For custom spectacle lenses: stores Rx, chosen material, shade, etc.
+    is_custom_lenses BOOLEAN DEFAULT FALSE,
+    is_restocked_on_abandonment BOOLEAN DEFAULT FALSE, -- For abandoned orders
+    CONSTRAINT chk_item_link CHECK ( (inventory_item_id IS NOT NULL AND service_product_id IS NULL) OR (inventory_item_id IS NULL AND service_product_id IS NOT NULL) )
+);
+
+-- BankNames: Pre-defined list of banks for transactions
+CREATE TABLE BankNames (
+    bank_name_id SERIAL PRIMARY KEY,
+    bank_name_en VARCHAR(100) UNIQUE NOT NULL,
+    bank_name_ar VARCHAR(100) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Payments: Records payments made against SalesOrders
+CREATE TABLE Payments (
+    payment_id SERIAL PRIMARY KEY,
+    sales_order_id INT NOT NULL REFERENCES SalesOrders(sales_order_id) ON DELETE CASCADE,
+    payment_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Cash', 'Bank Transaction')),
+    bank_name_id INT REFERENCES BankNames(bank_name_id), -- Required if method is 'Bank Transaction'
+    transaction_id VARCHAR(100), -- Required if method is 'Bank Transaction'
+    received_by_user_id INT NOT NULL REFERENCES Users(user_id),
+    shift_id INT REFERENCES Shifts(shift_id), -- Link to shift, NOT NULL for payments processed by user
+    notes TEXT,
+    CONSTRAINT chk_bank_details_payment CHECK ( (payment_method = 'Cash') OR (payment_method = 'Bank Transaction' AND bank_name_id IS NOT NULL AND transaction_id IS NOT NULL) )
+);
+
+-- ExpenseCategories: Defines categories for business expenses
+CREATE TABLE ExpenseCategories (
+    expense_category_id SERIAL PRIMARY KEY,
+    category_name_en VARCHAR(100) UNIQUE NOT NULL,
+    category_name_ar VARCHAR(100) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Expenses: Records business expenses
+CREATE TABLE Expenses (
+    expense_id SERIAL PRIMARY KEY,
+    expense_date DATE NOT NULL,
+    expense_category_id INT NOT NULL REFERENCES ExpenseCategories(expense_category_id),
+    description TEXT NOT NULL, -- Can store SalesOrder ID for abandoned order losses
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Cash', 'Bank Transaction')),
+    bank_name_id INT REFERENCES BankNames(bank_name_id), -- Required if method is 'Bank Transaction'
+    transaction_id_ref VARCHAR(100), -- Required if method is 'Bank Transaction'
+    created_by_user_id INT NOT NULL REFERENCES Users(user_id),
+    shift_id INT REFERENCES Shifts(shift_id), -- Link to shift if paid from till (cash expense)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_bank_details_expense CHECK ( (payment_method = 'Cash') OR (payment_method = 'Bank Transaction' AND bank_name_id IS NOT NULL AND transaction_id_ref IS NOT NULL) )
+);
+
+-- Appointments: Manages patient appointments, primarily for delivery
+CREATE TABLE Appointments (
+    appointment_id SERIAL PRIMARY KEY,
+    sales_order_id INT NOT NULL REFERENCES SalesOrders(sales_order_id) ON DELETE CASCADE,
+    appointment_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('Scheduled', 'Confirmed', 'Completed', 'Cancelled', 'No Show', 'Rescheduled')),
+    notes TEXT,
+    created_by_user_id INT NOT NULL REFERENCES Users(user_id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add FK constraint from SalesOrders to Appointments after Appointments table is created
+ALTER TABLE SalesOrders ADD CONSTRAINT fk_delivery_appointment FOREIGN KEY (delivery_appointment_id) REFERENCES Appointments(appointment_id) ON DELETE SET NULL;
+
+-- ApplicationSettings: Stores general application settings as key-value pairs
+CREATE TABLE ApplicationSettings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT,
+    description TEXT -- Description of what the setting controls
+);
+
+-- AuditLog: Table for logging critical data changes
+CREATE TABLE AuditLog (
+    audit_log_id BIGSERIAL PRIMARY KEY,
+    table_name VARCHAR(100) NOT NULL,
+    record_pk TEXT NOT NULL, -- Stores primary key value(s) of the affected record as text
+    column_name VARCHAR(100), -- Optional: if logging specific column changes, otherwise NULL
+    old_value TEXT, -- Stores old data, typically as JSON string
+    new_value TEXT, -- Stores new data, typically as JSON string
+    action_type VARCHAR(10) NOT NULL CHECK (action_type IN ('INSERT', 'UPDATE', 'DELETE')),
+    action_timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id INT REFERENCES Users(user_id), -- User performing the action (via get_current_app_user_id)
+    details TEXT -- Additional context if needed (e.g., reason for manual stock adjustment)
+);
+
+--------------------------------------------------------------------------------
+-- Indexes
+--------------------------------------------------------------------------------
+-- Shift Management
+CREATE INDEX idx_shifts_user_status ON Shifts(started_by_user_id, status);
+CREATE INDEX idx_shifts_start_time ON Shifts(start_time);
+CREATE INDEX idx_shiftpauselog_shiftid ON ShiftPauseLog(shift_id);
+
+-- Transactions linked to Shifts
+CREATE INDEX idx_salesorders_shiftid ON SalesOrders(shift_id);
+CREATE INDEX idx_payments_shiftid ON Payments(shift_id);
+CREATE INDEX idx_expenses_shiftid ON Expenses(shift_id);
+
+-- Patients & Diagnostics
+CREATE INDEX idx_patients_name ON Patients(full_name);
+CREATE INDEX idx_patients_phone ON Patients(phone_number);
+CREATE INDEX idx_opticaldiagnostics_patientid ON OpticalDiagnostics(patient_id);
+
+-- Inventory & Products
+CREATE INDEX idx_inventoryitems_productid ON InventoryItems(product_id);
+CREATE INDEX idx_inventoryitems_name_en ON InventoryItems(item_specific_name_en);
+CREATE INDEX idx_inventoryitems_name_ar ON InventoryItems(item_specific_name_ar);
+CREATE INDEX idx_products_name_en ON Products(product_name_en);
+CREATE INDEX idx_products_name_ar ON Products(product_name_ar);
+
+-- Sales & Payments
+CREATE INDEX idx_salesorders_patientid ON SalesOrders(patient_id);
+CREATE INDEX idx_salesorders_status_val ON SalesOrders(status);
+CREATE INDEX idx_salesorders_order_date ON SalesOrders(order_date);
+CREATE INDEX idx_salesorderitems_salesorderid ON SalesOrderItems(sales_order_id);
+CREATE INDEX idx_payments_salesorderid ON Payments(sales_order_id);
+CREATE INDEX idx_payments_payment_date ON Payments(payment_date);
+
+-- Expenses
+CREATE INDEX idx_expenses_date ON Expenses(expense_date);
+CREATE INDEX idx_expenses_categoryid ON Expenses(expense_category_id);
+
+-- Appointments
+CREATE INDEX idx_appointments_datetime ON Appointments(appointment_datetime);
+CREATE INDEX idx_appointments_status ON Appointments(status);
+
+-- Audit Log
+CREATE INDEX idx_auditlog_table_record ON AuditLog(table_name, record_pk);
+CREATE INDEX idx_auditlog_user_timestamp ON AuditLog(user_id, action_timestamp);
+CREATE INDEX idx_auditlog_action_timestamp ON AuditLog(action_timestamp);
+
+--------------------------------------------------------------------------------
+-- Stored Procedures and Functions
+--------------------------------------------------------------------------------
+
+-- Procedure to Start a Shift
+CREATE OR REPLACE PROCEDURE StartShift(
+    p_user_id INT,
+    p_opening_float DECIMAL(12,2),
+    OUT p_shift_id INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM Shifts WHERE started_by_user_id = p_user_id AND status IN ('Active', 'Paused')) THEN
+        RAISE EXCEPTION 'User ID % already has an active or paused shift. Please end or resume it.', p_user_id;
+    END IF;
+    INSERT INTO Shifts (started_by_user_id, opening_float, status, start_time)
+    VALUES (p_user_id, p_opening_float, 'Active', NOW())
+    RETURNING shift_id INTO p_shift_id;
+    CALL set_app_shift(p_shift_id); -- Set current shift in session
+END;
+$$;
+
+-- Procedure to Pause an Active Shift
+CREATE OR REPLACE PROCEDURE PauseShift(
+    p_shift_id INT,
+    p_user_id INT -- User performing the pause action (should match shift owner or be Admin)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_current_status VARCHAR(20);
+    v_shift_owner_id INT;
+BEGIN
+    SELECT status, started_by_user_id INTO v_current_status, v_shift_owner_id FROM Shifts WHERE shift_id = p_shift_id;
+    IF v_current_status IS NULL THEN RAISE EXCEPTION 'Shift ID % not found.', p_shift_id; END IF;
+    IF v_shift_owner_id != p_user_id AND (SELECT role FROM Users WHERE user_id = p_user_id) != 'Admin' THEN
+        RAISE EXCEPTION 'User ID % is not authorized to pause shift ID %.', p_user_id, p_shift_id;
+    END IF;
+    IF v_current_status != 'Active' THEN
+        RAISE EXCEPTION 'Shift ID % is not active and cannot be paused. Current status: %', p_shift_id, v_current_status;
+    END IF;
+    UPDATE Shifts SET status = 'Paused', updated_at = NOW() WHERE shift_id = p_shift_id;
+    INSERT INTO ShiftPauseLog (shift_id, paused_by_user_id, paused_at) VALUES (p_shift_id, p_user_id, NOW());
+    IF v_shift_owner_id = get_current_app_user_id() THEN -- Only clear session if current user paused their own shift
+        CALL set_app_shift(NULL);
+    END IF;
+END;
+$$;
+
+-- Procedure to Resume a Paused or Interrupted Shift
+CREATE OR REPLACE PROCEDURE ResumeShift(
+    p_shift_id INT,
+    p_user_id INT -- User performing the resume action (must be shift owner)
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_current_status VARCHAR(20);
+    v_last_pause_log_id INT;
+BEGIN
+    SELECT status INTO v_current_status FROM Shifts WHERE shift_id = p_shift_id AND started_by_user_id = p_user_id;
+    IF v_current_status IS NULL THEN RAISE EXCEPTION 'Shift ID % not found for User ID %.', p_shift_id, p_user_id; END IF;
+    IF v_current_status NOT IN ('Paused', 'Interrupted') THEN
+        RAISE EXCEPTION 'Shift ID % is not paused or interrupted and cannot be resumed. Current status: %', p_shift_id, v_current_status;
+    END IF;
+    IF EXISTS (SELECT 1 FROM Shifts WHERE started_by_user_id = p_user_id AND status = 'Active' AND shift_id != p_shift_id) THEN
+        RAISE EXCEPTION 'User ID % already has another active shift.', p_user_id;
+    END IF;
+    UPDATE Shifts SET status = 'Active', updated_at = NOW() WHERE shift_id = p_shift_id;
+    IF v_current_status = 'Paused' THEN -- Only update pause log if it was explicitly paused
+        SELECT shift_pause_log_id INTO v_last_pause_log_id
+        FROM ShiftPauseLog WHERE shift_id = p_shift_id AND resumed_at IS NULL ORDER BY paused_at DESC LIMIT 1;
+        IF v_last_pause_log_id IS NOT NULL THEN
+            UPDATE ShiftPauseLog SET resumed_at = NOW() WHERE shift_pause_log_id = v_last_pause_log_id;
+        END IF;
+    END IF;
+    CALL set_app_shift(p_shift_id); -- Set current shift in session
+END;
+$$;
+
+-- Procedure to End a Shift and Calculate Totals
+CREATE OR REPLACE PROCEDURE EndShift(
+    p_shift_id INT,
+    p_user_id INT, -- User performing the end action (must be shift owner or Admin)
+    p_closing_cash_counted DECIMAL(12,2),
+    p_notes TEXT DEFAULT NULL
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_current_status VARCHAR(20);
+    v_shift_owner_id INT;
+    v_opening_float DECIMAL(12,2);
+    v_total_cash_payments_received DECIMAL(12,2);
+    v_total_cash_expenses_paid DECIMAL(12,2);
+    v_expected_cash DECIMAL(12,2);
+    v_cash_variance DECIMAL(12,2);
+BEGIN
+    SELECT status, opening_float, started_by_user_id INTO v_current_status, v_opening_float, v_shift_owner_id
+    FROM Shifts WHERE shift_id = p_shift_id;
+    IF v_current_status IS NULL THEN RAISE EXCEPTION 'Shift ID % not found.', p_shift_id; END IF;
+    IF v_shift_owner_id != p_user_id AND (SELECT role FROM Users WHERE user_id = p_user_id) != 'Admin' THEN
+        RAISE EXCEPTION 'User ID % is not authorized to end shift ID %.', p_user_id, p_shift_id;
+    END IF;
+    IF v_current_status NOT IN ('Active', 'Paused', 'Interrupted') THEN
+        RAISE EXCEPTION 'Shift ID % is not in a state that can be ended. Current status: %', p_shift_id, v_current_status;
+    END IF;
+
+    SELECT COALESCE(SUM(amount), 0) INTO v_total_cash_payments_received
+    FROM Payments WHERE shift_id = p_shift_id AND payment_method = 'Cash';
+
+    SELECT COALESCE(SUM(amount), 0) INTO v_total_cash_expenses_paid
+    FROM Expenses WHERE shift_id = p_shift_id AND payment_method = 'Cash';
+
+    v_expected_cash := v_opening_float + v_total_cash_payments_received - v_total_cash_expenses_paid;
+    v_cash_variance := p_closing_cash_counted - v_expected_cash;
+
+    UPDATE Shifts
+    SET end_time = NOW(), status = 'Ended', closing_cash_counted = p_closing_cash_counted,
+        expected_cash_in_drawer = v_expected_cash, cash_variance = v_cash_variance,
+        notes = p_notes, updated_at = NOW()
+    WHERE shift_id = p_shift_id;
+
+    IF v_current_status = 'Paused' THEN -- If ending a paused shift, mark its pause log as resolved
+        UPDATE ShiftPauseLog SET resumed_at = NOW() -- Or use shift's end_time
+        WHERE shift_id = p_shift_id AND resumed_at IS NULL ORDER BY paused_at DESC LIMIT 1;
+    END IF;
+
+    IF v_shift_owner_id = get_current_app_user_id() THEN -- Only clear session if current user ended their own shift
+        CALL set_app_shift(NULL);
+    END IF;
+END;
+$$;
+
+-- Procedure to recalculate and update SalesOrder subtotal
+CREATE OR REPLACE PROCEDURE RecalculateSalesOrderSubtotal(p_sales_order_id INT)
+LANGUAGE plpgsql AS $$
+DECLARE v_calculated_subtotal DECIMAL(12,2);
+BEGIN
+    SELECT COALESCE(SUM(item_subtotal), 0) INTO v_calculated_subtotal
+    FROM SalesOrderItems WHERE sales_order_id = p_sales_order_id;
+    UPDATE SalesOrders SET subtotal_amount = v_calculated_subtotal
+    WHERE sales_order_id = p_sales_order_id;
+END;
+$$;
+
+-- Procedure to record a payment and update sales order, linking to current shift
+CREATE OR REPLACE PROCEDURE RecordPaymentAndUpdateSalesOrder(
+    p_sales_order_id INT, p_amount DECIMAL, p_payment_method VARCHAR,
+    p_bank_name_id INT, p_transaction_id VARCHAR, p_received_by_user_id INT, p_notes TEXT
+)
+LANGUAGE plpgsql AS $$
+DECLARE v_current_shift_id INT;
+BEGIN
+    v_current_shift_id := get_current_app_shift_id();
+    IF v_current_shift_id IS NULL AND p_payment_method = 'Cash' THEN -- Or for all payments depending on policy
+        RAISE EXCEPTION 'Cannot record payment. No active shift found for user ID %.', p_received_by_user_id;
+    END IF;
+
+    INSERT INTO Payments (sales_order_id, amount, payment_method, bank_name_id, transaction_id, received_by_user_id, notes, shift_id)
+    VALUES (p_sales_order_id, p_amount, p_payment_method, p_bank_name_id, p_transaction_id, p_received_by_user_id, p_notes, v_current_shift_id);
+    UPDATE SalesOrders SET amount_paid = amount_paid + p_amount
+    WHERE sales_order_id = p_sales_order_id;
+END;
+$$;
+
+-- Function to generate Profit and Loss Statement data
+CREATE OR REPLACE FUNCTION GenerateProfitAndLossStatement(p_start_date DATE, p_end_date DATE)
+RETURNS TABLE (category_type TEXT, item_description TEXT, amount DECIMAL)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_total_revenue DECIMAL; v_total_cogs DECIMAL; v_gross_profit DECIMAL; v_total_operating_expenses DECIMAL;
+BEGIN
+    SELECT COALESCE(SUM(pay.amount), 0) INTO v_total_revenue
+    FROM Payments pay JOIN SalesOrders so ON pay.sales_order_id = so.sales_order_id
+    WHERE DATE(pay.payment_date) BETWEEN p_start_date AND p_end_date AND so.status IN ('Completed', 'Abandoned');
+
+    SELECT COALESCE(SUM(soi.quantity * COALESCE(inv.cost_price, 0)), 0) INTO v_total_cogs
+    FROM SalesOrderItems soi JOIN InventoryItems inv ON soi.inventory_item_id = inv.inventory_item_id
+    JOIN SalesOrders so ON soi.sales_order_id = so.sales_order_id
+    WHERE so.status = 'Completed' AND DATE(so.order_date) BETWEEN p_start_date AND p_end_date;
+
+    v_gross_profit := v_total_revenue - v_total_cogs;
+
+    SELECT COALESCE(SUM(e.amount), 0) INTO v_total_operating_expenses
+    FROM Expenses e WHERE e.expense_date BETWEEN p_start_date AND p_end_date;
+
+    RETURN QUERY SELECT 'Revenue' AS category_type, 'Total Cash Revenue Received' AS item_description, v_total_revenue AS amount;
+    RETURN QUERY SELECT 'COGS' AS category_type, 'Cost of Goods Sold (Completed Orders)' AS item_description, v_total_cogs AS amount;
+    RETURN QUERY SELECT 'Gross Profit' AS category_type, 'Gross Profit' AS item_description, v_gross_profit AS amount;
+
+    RETURN QUERY SELECT 'Operating Expense' AS category_type, ec.category_name_en || COALESCE(': ' || e.description, '') AS item_description, e.amount
+    FROM Expenses e JOIN ExpenseCategories ec ON e.expense_category_id = ec.expense_category_id
+    WHERE e.expense_date BETWEEN p_start_date AND p_end_date;
+
+    RETURN QUERY SELECT 'Total Operating Expense' AS category_type, 'Total Operating Expenses' AS item_description, v_total_operating_expenses AS amount;
+    RETURN QUERY SELECT 'Net Profit' AS category_type, 'Net Profit/(Loss)' AS item_description, (v_gross_profit - v_total_operating_expenses) AS amount;
+END;
+$$;
+
+-- Procedure to handle abandoning an order
+CREATE OR REPLACE PROCEDURE ProcessAbandonedOrder(
+    p_sales_order_id INT, p_abandoned_by_user_id INT, p_restock_item_ids INT[] DEFAULT ARRAY[]::INT[]
+)
+LANGUAGE plpgsql AS $$
+DECLARE
+    v_item_record RECORD; v_total_loss_on_unrestocked_goods DECIMAL(12,2) := 0; v_loss_expense_category_id INT; v_order_exists BOOLEAN; v_current_shift_id INT;
+BEGIN
+    v_current_shift_id := get_current_app_shift_id();
+    IF v_current_shift_id IS NULL THEN RAISE EXCEPTION 'Cannot process abandoned order. No active shift for user ID %.', p_abandoned_by_user_id; END IF;
+
+    SELECT EXISTS (SELECT 1 FROM SalesOrders WHERE sales_order_id = p_sales_order_id AND status NOT IN ('Completed', 'Cancelled', 'Abandoned'))
+    INTO v_order_exists;
+    IF NOT v_order_exists THEN RAISE EXCEPTION 'Sales Order ID % cannot be abandoned or does not exist in an abandonable state.', p_sales_order_id; END IF;
+
+    UPDATE SalesOrders SET status = 'Abandoned', updated_at = NOW() WHERE sales_order_id = p_sales_order_id;
+
+    FOR v_item_record IN SELECT soi.so_item_id, soi.inventory_item_id, soi.quantity, COALESCE(inv.cost_price, 0) as cost_price
+        FROM SalesOrderItems soi LEFT JOIN InventoryItems inv ON soi.inventory_item_id = inv.inventory_item_id
+        WHERE soi.sales_order_id = p_sales_order_id AND soi.inventory_item_id IS NOT NULL
+    LOOP
+        IF v_item_record.so_item_id = ANY(p_restock_item_ids) THEN
+            UPDATE InventoryItems SET quantity_on_hand = quantity_on_hand + v_item_record.quantity
+            WHERE inventory_item_id = v_item_record.inventory_item_id;
+            UPDATE SalesOrderItems SET is_restocked_on_abandonment = TRUE WHERE so_item_id = v_item_record.so_item_id;
+        ELSE
+            v_total_loss_on_unrestocked_goods := v_total_loss_on_unrestocked_goods + (v_item_record.quantity * v_item_record.cost_price);
+            UPDATE SalesOrderItems SET is_restocked_on_abandonment = FALSE WHERE so_item_id = v_item_record.so_item_id;
+        END IF;
+    END LOOP;
+
+    IF v_total_loss_on_unrestocked_goods > 0 THEN
+        SELECT expense_category_id INTO v_loss_expense_category_id FROM ExpenseCategories WHERE lower(category_name_en) = lower('Loss on Abandoned Orders');
+        IF v_loss_expense_category_id IS NULL THEN RAISE WARNING 'Expense category "Loss on Abandoned Orders" not found. Please create it to log this loss.';
+        ELSE INSERT INTO Expenses (expense_date, expense_category_id, description, amount, payment_method, created_by_user_id, shift_id)
+            VALUES (CURRENT_DATE, v_loss_expense_category_id, 'Loss from abandoned Sales Order ID: ' || p_sales_order_id,
+                    v_total_loss_on_unrestocked_goods, 'Cash', p_abandoned_by_user_id, v_current_shift_id); -- Assuming loss is from current shift's till if cash based
+        END IF;
+    END IF;
+END;
+$$;
+
+-- Procedure to handle stock deduction when a SalesOrder is marked 'Completed'
+CREATE OR REPLACE PROCEDURE ProcessOrderCompletionStockUpdate(p_sales_order_id INT)
+LANGUAGE plpgsql AS $$
+DECLARE item_record RECORD;
+BEGIN
+    FOR item_record IN SELECT soi.inventory_item_id, soi.quantity FROM SalesOrderItems soi
+                       WHERE soi.sales_order_id = p_sales_order_id AND soi.inventory_item_id IS NOT NULL
+    LOOP UPDATE InventoryItems SET quantity_on_hand = quantity_on_hand - item_record.quantity
+        WHERE inventory_item_id = item_record.inventory_item_id;
+    END LOOP;
+END;
+$$;
+
+--------------------------------------------------------------------------------
+-- Triggers
+--------------------------------------------------------------------------------
+-- Apply 'updated_at' triggers
+CREATE TRIGGER set_centerprofile_timestamp BEFORE UPDATE ON CenterProfile FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_users_timestamp BEFORE UPDATE ON Users FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_patients_timestamp BEFORE UPDATE ON Patients FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_products_timestamp BEFORE UPDATE ON Products FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_inventoryitems_timestamp BEFORE UPDATE ON InventoryItems FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_purchaseorders_timestamp BEFORE UPDATE ON PurchaseOrders FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_salesorders_timestamp BEFORE UPDATE ON SalesOrders FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_expenses_timestamp BEFORE UPDATE ON Expenses FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_appointments_timestamp BEFORE UPDATE ON Appointments FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+CREATE TRIGGER set_shifts_timestamp BEFORE UPDATE ON Shifts FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+
+CREATE OR REPLACE FUNCTION update_purchase_order_total() RETURNS TRIGGER AS $$
+DECLARE v_po_id INT;
+BEGIN
+    IF (TG_OP = 'DELETE') THEN v_po_id := OLD.purchase_order_id; ELSE v_po_id := NEW.purchase_order_id; END IF;
+    UPDATE PurchaseOrders po SET total_amount = (SELECT COALESCE(SUM(poi.subtotal), 0) FROM PurchaseOrderItems poi WHERE poi.purchase_order_id = v_po_id)
+    WHERE po.purchase_order_id = v_po_id;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_update_po_total AFTER INSERT OR UPDATE OR DELETE ON PurchaseOrderItems FOR EACH ROW EXECUTE FUNCTION update_purchase_order_total();
+
+CREATE OR REPLACE FUNCTION update_inventory_on_po_receipt() RETURNS TRIGGER AS $$
+DECLARE v_quantity_change INT;
+BEGIN
+    IF TG_OP = 'UPDATE' AND NEW.quantity_received IS DISTINCT FROM OLD.quantity_received THEN
+        v_quantity_change := NEW.quantity_received - COALESCE(OLD.quantity_received, 0);
+        IF v_quantity_change != 0 THEN
+            UPDATE InventoryItems SET quantity_on_hand = quantity_on_hand + v_quantity_change, cost_price = NEW.purchase_price_per_unit
+            WHERE inventory_item_id = NEW.inventory_item_id;
+        END IF;
+    ELSIF TG_OP = 'INSERT' AND NEW.quantity_received > 0 THEN
+        UPDATE InventoryItems SET quantity_on_hand = quantity_on_hand + NEW.quantity_received, cost_price = NEW.purchase_price_per_unit
+        WHERE inventory_item_id = NEW.inventory_item_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_update_inventory_on_po_receipt AFTER INSERT OR UPDATE OF quantity_received ON PurchaseOrderItems FOR EACH ROW EXECUTE FUNCTION update_inventory_on_po_receipt();
+
+CREATE OR REPLACE FUNCTION update_sales_order_subtotal_trigger() RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'DELETE') THEN CALL RecalculateSalesOrderSubtotal(OLD.sales_order_id);
+    ELSE CALL RecalculateSalesOrderSubtotal(NEW.sales_order_id); END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_update_sales_order_subtotal AFTER INSERT OR UPDATE OR DELETE ON SalesOrderItems FOR EACH ROW EXECUTE FUNCTION update_sales_order_subtotal_trigger();
+
+CREATE OR REPLACE FUNCTION check_active_shift_for_transaction() RETURNS TRIGGER AS $$
+DECLARE v_current_shift_id INT; v_shift_status VARCHAR(20);
+BEGIN
+    v_current_shift_id := get_current_app_shift_id();
+    IF v_current_shift_id IS NULL THEN RAISE EXCEPTION 'No active shift found for the current user. Please start or resume a shift to process transactions.'; END IF;
+    SELECT status INTO v_shift_status FROM Shifts WHERE shift_id = v_current_shift_id;
+    IF v_shift_status != 'Active' THEN RAISE EXCEPTION 'The current shift (ID: %) is not active (Status: %). Transactions cannot be processed.', v_current_shift_id, v_shift_status; END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        IF TG_TABLE_NAME = 'salesorders' THEN NEW.shift_id := v_current_shift_id; END IF;
+        IF TG_TABLE_NAME = 'payments' THEN NEW.shift_id := v_current_shift_id; END IF;
+        IF TG_TABLE_NAME = 'expenses' AND NEW.payment_method = 'Cash' THEN NEW.shift_id := v_current_shift_id; END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trg_check_shift_salesorders BEFORE INSERT ON SalesOrders FOR EACH ROW EXECUTE FUNCTION check_active_shift_for_transaction();
+CREATE TRIGGER trg_check_shift_payments BEFORE INSERT ON Payments FOR EACH ROW EXECUTE FUNCTION check_active_shift_for_transaction();
+CREATE TRIGGER trg_check_shift_cash_expenses BEFORE INSERT ON Expenses FOR EACH ROW WHEN (NEW.payment_method = 'Cash') EXECUTE FUNCTION check_active_shift_for_transaction();
+
+CREATE OR REPLACE FUNCTION audit_changes_trigger_function() RETURNS TRIGGER AS $$
+DECLARE
+  v_user_id INT; v_record_pk TEXT; v_old_data JSONB; v_new_data JSONB;
+  v_excluded_cols TEXT[] := ARRAY['created_at', 'updated_at']; pk_column_name TEXT;
+BEGIN
+  v_user_id := get_current_app_user_id();
+  SELECT a.attname INTO pk_column_name FROM pg_index i JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+  WHERE i.indrelid = TG_RELID AND i.indisprimary LIMIT 1; -- Assuming single column PK for simplicity
+  IF pk_column_name IS NULL THEN RAISE WARNING 'Audit trigger on table % could not determine PK column name. Audit log for this operation may be incomplete.', TG_TABLE_NAME; v_record_pk := 'UNKNOWN'; END IF;
+
+  IF (TG_OP = 'UPDATE') THEN
+    IF pk_column_name IS NOT NULL THEN EXECUTE format('SELECT ($1).%I::TEXT', pk_column_name) INTO v_record_pk USING OLD; END IF;
+    v_old_data := to_jsonb(OLD) - v_excluded_cols; v_new_data := to_jsonb(NEW) - v_excluded_cols;
+    IF v_old_data IS DISTINCT FROM v_new_data THEN
+        INSERT INTO AuditLog (table_name, record_pk, old_value, new_value, action_type, user_id)
+        VALUES (TG_TABLE_NAME, COALESCE(v_record_pk, OLD.ctid::text), v_old_data::TEXT, v_new_data::TEXT, TG_OP, v_user_id);
+    END IF;
+    RETURN NEW;
+  ELSIF (TG_OP = 'DELETE') THEN
+    IF pk_column_name IS NOT NULL THEN EXECUTE format('SELECT ($1).%I::TEXT', pk_column_name) INTO v_record_pk USING OLD; END IF;
+    v_old_data := to_jsonb(OLD) - v_excluded_cols;
+    INSERT INTO AuditLog (table_name, record_pk, old_value, action_type, user_id)
+    VALUES (TG_TABLE_NAME, COALESCE(v_record_pk, OLD.ctid::text), v_old_data::TEXT, TG_OP, v_user_id);
+    RETURN OLD;
+  ELSIF (TG_OP = 'INSERT') THEN
+    IF pk_column_name IS NOT NULL THEN EXECUTE format('SELECT ($1).%I::TEXT', pk_column_name) INTO v_record_pk USING NEW; END IF;
+    v_new_data := to_jsonb(NEW) - v_excluded_cols;
+    INSERT INTO AuditLog (table_name, record_pk, new_value, action_type, user_id)
+    VALUES (TG_TABLE_NAME, COALESCE(v_record_pk, NEW.ctid::text), v_new_data::TEXT, TG_OP, v_user_id);
+    RETURN NEW;
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply audit trigger to critical tables
+CREATE TRIGGER trg_audit_centerprofile AFTER INSERT OR UPDATE OR DELETE ON CenterProfile FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_users AFTER INSERT OR UPDATE OR DELETE ON Users FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_userpermissions AFTER INSERT OR UPDATE OR DELETE ON UserPermissions FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_shifts AFTER INSERT OR UPDATE OR DELETE ON Shifts FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_patients AFTER INSERT OR UPDATE OR DELETE ON Patients FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_products AFTER INSERT OR UPDATE OR DELETE ON Products FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_inventoryitems AFTER INSERT OR UPDATE OR DELETE ON InventoryItems FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_purchaseorders AFTER INSERT OR UPDATE OR DELETE ON PurchaseOrders FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_salesorders AFTER INSERT OR UPDATE OR DELETE ON SalesOrders FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_payments AFTER INSERT OR UPDATE OR DELETE ON Payments FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_expenses AFTER INSERT OR UPDATE OR DELETE ON Expenses FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_appointments AFTER INSERT OR UPDATE OR DELETE ON Appointments FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+CREATE TRIGGER trg_audit_applicationsettings AFTER INSERT OR UPDATE OR DELETE ON ApplicationSettings FOR EACH ROW EXECUTE FUNCTION audit_changes_trigger_function();
+
+--------------------------------------------------------------------------------
+-- Database Views
+--------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW SalesDetailedView AS
+SELECT
+    so.sales_order_id, so.order_date, p.system_patient_id, p.full_name AS patient_name,
+    u.full_name AS created_by_user, s.shift_id, us_shift.username as shift_user, so.status AS order_status, soi.so_item_id,
+    soi.description AS item_description, prod.product_name_en AS master_product_name_en,
+    prod.product_name_ar AS master_product_name_ar, pc.category_name_en AS category_en,
+    pc.category_name_ar AS category_ar, soi.quantity, soi.unit_price, soi.item_subtotal,
+    inv.brand_name, inv.attributes AS item_attributes,
+    COALESCE(inv.cost_price, 0) AS item_cost_price,
+    (soi.item_subtotal - (soi.quantity * COALESCE(inv.cost_price, 0))) AS item_profit_on_item,
+    so.subtotal_amount AS order_subtotal, so.discount_amount AS order_discount,
+    so.total_amount AS order_total, so.amount_paid AS order_amount_paid,
+    so.balance_due AS order_balance_due
+FROM SalesOrders so
+LEFT JOIN Patients p ON so.patient_id = p.patient_id
+JOIN Users u ON so.created_by_user_id = u.user_id
+JOIN SalesOrderItems soi ON so.sales_order_id = soi.sales_order_id
+LEFT JOIN InventoryItems inv ON soi.inventory_item_id = inv.inventory_item_id
+LEFT JOIN Products prod ON COALESCE(inv.product_id, soi.service_product_id) = prod.product_id
+LEFT JOIN ProductCategories pc ON prod.category_id = pc.category_id
+LEFT JOIN Shifts s ON so.shift_id = s.shift_id
+LEFT JOIN Users us_shift ON s.started_by_user_id = us_shift.user_id;
+
+CREATE OR REPLACE VIEW InventorySummaryView AS
+SELECT
+    i.inventory_item_id, p.product_code, p.product_name_en, p.product_name_ar,
+    pc.category_name_en, pc.category_name_ar, i.brand_name,
+    i.item_specific_name_en, i.item_specific_name_ar, i.attributes,
+    i.quantity_on_hand, i.selling_price, i.cost_price,
+    (i.quantity_on_hand * COALESCE(i.cost_price,0)) AS total_cost_value,
+    (i.quantity_on_hand * i.selling_price) AS total_selling_value,
+    i.min_stock_level, i.unit_of_measure, i.is_active
+FROM InventoryItems i
+JOIN Products p ON i.product_id = p.product_id
+JOIN ProductCategories pc ON p.category_id = pc.category_id;
+
+CREATE OR REPLACE VIEW LowStockItemsView AS
+SELECT * FROM InventorySummaryView WHERE quantity_on_hand <= min_stock_level AND is_active = TRUE;
+
+CREATE OR REPLACE VIEW OutstandingPaymentsView AS
+SELECT
+    so.sales_order_id, so.order_date, p.system_patient_id, p.full_name AS patient_name,
+    p.phone_number AS patient_phone, so.total_amount, so.amount_paid, so.balance_due,
+    so.status, app.appointment_datetime AS delivery_appointment
+FROM SalesOrders so
+LEFT JOIN Patients p ON so.patient_id = p.patient_id
+LEFT JOIN Appointments app ON so.delivery_appointment_id = app.appointment_id
+WHERE so.balance_due > 0 AND so.status NOT IN ('Cancelled', 'Abandoned');
+
+CREATE OR REPLACE VIEW ShiftReportSummaryView AS
+SELECT
+    s.shift_id, s.start_time, s.end_time, u.username AS started_by_username, u.full_name AS started_by_fullname,
+    s.status AS shift_status, s.opening_float, s.closing_cash_counted, s.expected_cash_in_drawer, s.cash_variance,
+    s.notes AS shift_notes,
+    (SELECT COALESCE(SUM(p.amount), 0) FROM Payments p WHERE p.shift_id = s.shift_id AND p.payment_method = 'Cash') AS total_cash_received_in_shift,
+    (SELECT COALESCE(SUM(p.amount), 0) FROM Payments p WHERE p.shift_id = s.shift_id AND p.payment_method = 'Bank Transaction') AS total_bank_received_in_shift,
+    (SELECT COALESCE(SUM(e.amount), 0) FROM Expenses e WHERE e.shift_id = s.shift_id AND e.payment_method = 'Cash') AS total_cash_expenses_paid_from_shift,
+    (SELECT COUNT(DISTINCT so.sales_order_id) FROM SalesOrders so WHERE so.shift_id = s.shift_id) AS total_sales_orders_in_shift,
+    (SELECT COALESCE(SUM(so.discount_amount),0) FROM SalesOrders so WHERE so.shift_id = s.shift_id) AS total_discounts_in_shift
+FROM Shifts s
+JOIN Users u ON s.started_by_user_id = u.user_id;
+
+CREATE OR REPLACE VIEW ShiftReportDetailedTransactionsView AS
+SELECT s.shift_id, 'SALES_ITEM' AS transaction_group, 'Sale Item' as transaction_type, so.sales_order_id AS reference_id, soi.so_item_id AS transaction_sub_id,
+    so.order_date AS transaction_timestamp, prod.product_name_en AS description,
+    soi.quantity, soi.unit_price, soi.item_subtotal AS amount,
+    NULL AS payment_method, pat.full_name AS patient_name, u.username AS user_performing
+FROM Shifts s JOIN SalesOrders so ON s.shift_id = so.shift_id JOIN Users u ON so.created_by_user_id = u.user_id
+JOIN SalesOrderItems soi ON so.sales_order_id = soi.sales_order_id
+LEFT JOIN InventoryItems inv ON soi.inventory_item_id = inv.inventory_item_id
+LEFT JOIN Products prod ON COALESCE(inv.product_id, soi.service_product_id) = prod.product_id
+LEFT JOIN Patients pat ON so.patient_id = pat.patient_id
+UNION ALL
+SELECT s.shift_id, 'PAYMENT' AS transaction_group, 'Payment Received' as transaction_type, pay.sales_order_id AS reference_id, pay.payment_id AS transaction_sub_id,
+    pay.payment_date AS transaction_timestamp, 'Payment for Order ID: ' || pay.sales_order_id || COALESCE(' by ' || pat.full_name, '') AS description,
+    NULL AS quantity, NULL AS unit_price, pay.amount,
+    pay.payment_method, pat.full_name AS patient_name, u.username AS user_performing
+FROM Shifts s JOIN Payments pay ON s.shift_id = pay.shift_id JOIN Users u ON pay.received_by_user_id = u.user_id
+LEFT JOIN SalesOrders so_pay ON pay.sales_order_id = so_pay.sales_order_id LEFT JOIN Patients pat ON so_pay.patient_id = pat.patient_id
+UNION ALL
+SELECT s.shift_id, 'EXPENSE' AS transaction_group, 'Expense Paid (Cash)' as transaction_type, e.expense_id AS reference_id, NULL AS transaction_sub_id,
+    e.created_at AS transaction_timestamp, -- Or e.expense_date
+    ec.category_name_en || ': ' || e.description AS description,
+    NULL AS quantity, NULL AS unit_price, -e.amount AS amount, -- Negative as it's an outflow from till
+    e.payment_method, NULL AS patient_name, u.username AS user_performing
+FROM Shifts s JOIN Expenses e ON s.shift_id = e.shift_id JOIN Users u ON e.created_by_user_id = u.user_id
+JOIN ExpenseCategories ec ON e.expense_category_id = ec.expense_category_id
+WHERE e.payment_method = 'Cash'; -- Only cash expenses from till affect shift cash
+
+--------------------------------------------------------------------------------
+-- Initial Data (Essential Lookup Data & Default Admin)
+--------------------------------------------------------------------------------
+-- This section provides examples of essential lookup data.
+-- The application should allow an Admin to manage this data post-setup.
+-- For a production deployment, this initial data might be minimal or handled by setup scripts.
+
+-- Default Admin User (Password: 'adminpass' - THIS MUST BE CHANGED IMMEDIATELY AFTER SETUP)
+-- The application should handle hashing the password before inserting.
+-- This is a placeholder for the HASH of 'adminpass' (e.g., using bcrypt).
+-- For actual deployment, generate a secure hash for 'adminpass' and use that.
+-- Example: INSERT INTO Users (username, password_hash, full_name, role, is_active)
+-- VALUES ('admin', '$2a$10$yourSecureGeneratedHashHere', 'Default Administrator', 'Admin', TRUE)
+-- ON CONFLICT (username) DO NOTHING;
+-- (The hash above is just an example and not a real hash of 'adminpass')
+
+-- Default User Permissions for Admin (grant all known permissions)
+-- This should ideally be done programmatically by the application after the admin user is created
+-- and all permission names are defined within the application code.
+-- This ensures all current permissions are granted to the initial admin.
+-- Example (conceptual - actual permission names defined in FR1.4 and elsewhere):
+/*
+DO $$
+DECLARE
+  admin_user_id INT;
+  perm_name TEXT;
+  all_permissions TEXT[] := ARRAY[
+    'CAN_GIVE_DISCOUNT', 'VIEW_FINANCIAL_REPORTS', 'EDIT_INVENTORY_PRICES',
+    'PROCESS_ABANDONED_ORDERS', 'MANAGE_USERS', 'MANAGE_SETTINGS', 'VIEW_AUDIT_LOG',
+    'MANAGE_CENTER_PROFILE', 'MANAGE_STOCK_ADJUSTMENTS', 'VIEW_ALL_SHIFT_REPORTS',
+    'MANAGE_PRODUCT_DEFINITIONS', 'MANAGE_CATEGORIES', 'MANAGE_BANK_NAMES'
+    -- Add ALL other relevant permission names here
+  ];
+BEGIN
+  SELECT user_id INTO admin_user_id FROM Users WHERE username = 'admin' LIMIT 1;
+  IF admin_user_id IS NOT NULL THEN
+    FOREACH perm_name IN ARRAY all_permissions
+    LOOP
+      INSERT INTO UserPermissions (user_id, permission_name, is_granted)
+      VALUES (admin_user_id, perm_name, TRUE)
+      ON CONFLICT (user_id, permission_name) DO NOTHING;
+    END LOOP;
+  END IF;
+END $$;
+*/
+
+-- Default Expense Categories
+INSERT INTO ExpenseCategories (category_name_en, category_name_ar, is_active) VALUES
+('Rent', 'إيجار', TRUE),
+('Salaries', 'رواتب', TRUE),
+('Utilities (Electricity, Water)', 'خدمات (كهرباء، ماء)', TRUE),
+('Supplies (Non-Inventory)', 'مستلزمات (غير مخزنية)', TRUE),
+('Marketing & Advertising', 'تسويق وإعلان', TRUE),
+('Maintenance & Repairs', 'صيانة وإصلاحات', TRUE),
+('Bank Charges & Fees', 'رسوم ومصاريف بنكية', TRUE),
+('Loss on Abandoned Orders', 'خسارة في الطلبات المهملة', TRUE),
+('Miscellaneous', 'متنوعات', TRUE)
+ON CONFLICT (category_name_en) DO NOTHING;
+
+-- Default Product Categories
+INSERT INTO ProductCategories (category_name_en, category_name_ar) VALUES
+('Frames - Medical', 'إطارات - طبية'),
+('Frames - Sunglasses', 'إطارات - شمسية'),
+('Lenses - Ophthalmic', 'عدسات - طبية (نظر)'),
+('Lenses - Sunglasses (Plano/Rx)', 'عدسات - شمسية (عادية/طبية)'),
+('Contact Lenses - Medical', 'عدسات لاصقة - طبية'),
+('Contact Lenses - Cosmetic', 'عدسات لاصقة - تجميلية'),
+('Reading Glasses (Ready-Made)', 'نظارات قراءة (جاهزة)'),
+('Optical Solutions & Cleaners', 'محاليل ومنظفات بصرية'),
+('Accessories (Cases, Chains, etc.)', 'إكسسوارات (حافظات، سلاسل، إلخ)'),
+('Services (Eye Exam, Repair, etc.)', 'خدمات (فحص نظر، إصلاح، إلخ)')
+ON CONFLICT (category_name_en) DO NOTHING;
+
+-- Default Bank Names (Examples)
+INSERT INTO BankNames (bank_name_en, bank_name_ar, is_active) VALUES
+('Bank of Khartoum', 'بنك الخرطوم', TRUE),
+('Omdurman National Bank', 'بنك أمدرمان الوطني', TRUE),
+('Faisal Islamic Bank', 'بنك فيصل الإسلامي', TRUE)
+ON CONFLICT (bank_name_en) DO NOTHING;
+
+-- Default Application Settings (Examples - application should manage these via Admin UI)
+INSERT INTO ApplicationSettings (setting_key, setting_value, description) VALUES
+('app.version', '1.0.0', 'Current application version (managed by build/deployment)'),
+('default.patient.id_prefix', 'PAT-', 'Prefix for system-generated patient IDs'),
+('currency.default.symbol', 'SDG', 'Default currency symbol (overridden by CenterProfile)'),
+('currency.default.code', 'SDG', 'Default currency code (overridden by CenterProfile)'),
+('whatsapp.template.appointment_reminder_en', 'Dear [PatientName], this is a reminder for your appointment at [CenterName] on [Date] at [Time]. Regards, [CenterName].', 'English template for appointment reminders. Placeholders: [PatientName], [CenterName], [Date], [Time]'),
+('whatsapp.template.appointment_reminder_ar', 'عزيزي [PatientName]، هذا تذكير بموعدك في [CenterName] يوم [Date] الساعة [Time]. مع تحيات، [CenterName].', 'Arabic template for appointment reminders. Placeholders: [PatientName], [CenterName], [Date], [Time]'),
+('whatsapp.template.order_ready_en', 'Dear [PatientName], your order #[OrderID] is ready for pickup at [CenterName]. Thank you!', 'English template for order ready notification. Placeholders: [PatientName], [OrderID], [CenterName]'),
+('whatsapp.template.order_ready_ar', 'عزيزي [PatientName]، طلبك رقم #[OrderID] جاهز للاستلام في [CenterName]. شكراً لك!', 'Arabic template for order ready notification. Placeholders: [PatientName], [OrderID], [CenterName]')
+ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, description = EXCLUDED.description;
+
+-- After initial data that might trigger audit logs, if a default admin user was created and set:
+-- Example: CALL set_app_user( (SELECT user_id FROM Users WHERE username = 'admin' LIMIT 1) );
+-- ... perform inserts that need auditing with this user ...
+-- CALL set_app_user(NULL); -- Clear user context after setup scripts
+
+COMMIT;
+
+-- End of Script
