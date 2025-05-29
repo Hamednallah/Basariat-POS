@@ -1,0 +1,97 @@
+Basariat POS - i18n & l10n Strategy (Final - EN)
+7.1. Goal:
+The primary goal of the internationalization (i18n) and localization (l10n) strategy for the "Basariat POS" system is to enable the application User Interface (UI) and, where applicable, data handling and display to effectively support at least two languages: Arabic (ar) as the default language and English (en). This strategy encompasses not only the accurate translation of all textual elements within the UI but also the correct handling of layout direction (Right-to-Left for Arabic, Left-to-Right for English), and the appropriate formatting for locale-sensitive data such as dates, numbers, and currency values.
+
+7.2. UI Text Externalization & Resource Bundles:
+
+Externalization Mandate: All user-visible strings within the application UI MUST be externalized from the Java source code and FXML files. This includes, but is not limited to, text on labels, button legends, menu items, dialog titles and content, error messages, confirmation messages, tooltips, table column headers, and any fixed textual content within sections like the "About Basariat POS" dialog (excluding dynamic data like the version number if it's loaded separately, or developer names which might be fixed but should still be manageable).
+
+Mechanism - Java ResourceBundles: The standard Java ResourceBundle API will be the designated mechanism for managing and retrieving localized strings. This will typically involve using .properties files for each supported locale, with keys mapping to translated strings.
+
+messages_ar.properties: This file will contain all UI strings translated into Arabic. It will serve as the default resource bundle loaded by the application if the Arabic locale is active or no other preference is found. The file must be UTF-8 encoded to correctly handle and display Arabic characters.
+
+messages_en.properties: This file will contain all UI strings translated into English. It must also be UTF-8 encoded.
+
+String Keys: Each externalized UI string will be referenced in the JavaFX FXML files (e.g., using the %key notation) or Java controller code (via the ResourceBundle API) by a unique, descriptive, and preferably hierarchical key (e.g., login.label.username, global.button.save, error.patient.notFound, help.menu.viewManual, about.dialog.title). A consistent naming convention for these keys should be established and followed to improve organization and maintainability.
+
+Implementation: The application code, likely through a dedicated MessageProvider utility class or a LocaleManager service, will dynamically load the appropriate resource bundle based on the currently selected UI locale. UI elements will then be populated with strings retrieved from this bundle using their assigned keys.
+
+7.3. Locale Selection & Management:
+
+Default Locale: Arabic (ar) will be the default locale when the "Basariat POS" application starts for the first time on a new installation, or if no user-specific language preference has been previously set and persisted. The specific Arabic locale (e.g., ar-SD for Sudan) can be used if regional formatting variations are critical, otherwise a generic ar should suffice.
+
+User-Selectable Language: A clear and easily accessible mechanism must be provided within the application UI for the user to switch the display language between Arabic and English. This could be implemented as:
+
+A ComboBox or MenuButton on the Login screen, allowing language selection before authentication.
+
+An option within a global "Settings," "Preferences," or "View" menu, accessible after the user has logged in.
+
+Persistence of Language Preference: The user's selected language preference should be persisted locally on the client machine (e.g., in a user-specific configuration file stored in the user's application data directory, or using Java's Preferences API). This ensures that the application launches in the user's last chosen language across subsequent sessions, providing a consistent user experience.
+
+Dynamic Language Switching: The application should ideally support dynamic language switching. This means that when a user changes the language setting, the entire UI (all currently visible screens, dialogs, and components) updates immediately to reflect the new language without requiring an application restart. If dynamic switching for all elements proves overly complex for the initial implementation, a restart requirement upon language change is an acceptable, though less ideal, fallback, and the user must be clearly informed of this.
+
+7.4. Layout Direction (RTL/LTR) for JavaFX:
+
+JavaFX Framework Support & Implementation: The JavaFX framework provides robust built-in support for Right-to-Left (RTL) and Left-to-Right (LTR) layouts, which must be correctly configured and utilized throughout the application.
+
+The Node.setNodeOrientation(NodeOrientation.RIGHT_TO_LEFT) or Node.setNodeOrientation(NodeOrientation.LEFT_TO_RIGHT) methods in JavaFX should be used to dynamically set the orientation for individual nodes or entire scenes based on the selected locale (e.g., RIGHT_TO_LEFT for Arabic).
+
+Standard JavaFX layout panes such as HBox, VBox, GridPane, BorderPane, and FlowPane generally respect the nodeOrientation of their children and themselves. Care must be taken in designing FXML layouts to ensure they adapt correctly.
+
+CSS can also be used to influence text alignment (-fx-text-alignment: right;) and potentially other layout aspects related to direction.
+
+Comprehensive RTL/LTR Testing: All UI screens, dialogs, custom components, and navigation flows must be thoroughly tested in both LTR (English) and RTL (Arabic) modes. This testing must verify:
+
+Correct text alignment within all components (labels, text fields, table cells, buttons, etc.).
+
+Appropriate placement and ordering of UI elements (e.g., labels appearing to the right of their associated input fields in RTL contexts, columns in TableView reordering if semantically appropriate, close buttons on the correct side of dialog title bars if dictated by OS conventions that JavaFX respects).
+
+Correct mirroring of icons or graphical elements that have an inherent directional meaning (e.g., back/forward navigation arrows, sort indicators in TableView headers, icons indicating text flow).
+
+Absence of any visual glitches such as overlapping components, truncated text, misaligned elements, or improper flow of controls in either layout direction.
+
+7.5. Data Handling & Storage for Multilingual Content:
+
+Database Encoding: The PostgreSQL database instance used by "Basariat POS" MUST be created and configured to use UTF-8 encoding. This is critical to ensure the correct storage, retrieval, and display of multilingual characters, particularly Arabic characters, in all relevant database fields (e.g., CenterProfile.center_name, Patient.full_name, Product.product_name_ar, ProductCategory.category_name_ar, user-entered remarks or notes fields) without data corruption or display issues like Mojibake.
+
+Application Data Processing & Encoding: All Java code within the "Basariat POS" application that handles string input from the UI, output to the UI, interaction with the database (sending SQL queries, retrieving results), or file I/O (e.g., for generating reports, reading/writing configuration files) must consistently use UTF-8 encoding to prevent character corruption and ensure seamless multilingual data flow.
+
+Bilingual Fields in Database Schema: For specific data fields that inherently require content to be stored and managed in both English and Arabic simultaneously (as identified and implemented in the database schema, e.g., Product.product_name_en and Product.product_name_ar; ProductCategory.category_name_en and ProductCategory.category_name_ar; BankName.bank_name_en and BankName.bank_name_ar; ExpenseCategory.category_name_en and ExpenseCategory.category_name_ar), separate columns are defined. The application logic (services and UI controllers) will be responsible for retrieving and displaying data from the appropriate language column based on the current UI locale selected by the user. Data entry forms for these entities (e.g., Product Management, Category Management screens) must provide distinct input fields for both the English and Arabic versions of such names or descriptions.
+
+CenterProfile Data Language: Fields within the CenterProfile table (e.g., center_name, address_line1, receipt_footer_message) will be entered by the Admin user during the initial setup wizard or later modifications in the language(s) they primarily operate in or wish to have displayed on official documents like receipts. The application will display these details as entered. If a center requires these specific profile fields to be bilingual on, for instance, receipts, they would need to enter bilingual text directly into these single fields (e.g., "My Optical Center / مركز البصريات الخاص بي").
+
+7.6. Formatting of Locale-Sensitive Data (Dates, Numbers, Currency):
+
+Dates:
+
+Display: Use Java's java.time.format.DateTimeFormatter class, configured with appropriate Locale objects (e.g., new Locale("ar", "SD") for Sudanese Arabic to get specific regional date formats if they differ from generic Arabic, or Locale.ENGLISH / Locale.US / Locale.UK for English variants) to format dates and times for display in the UI and on reports in a culturally appropriate and easily understandable manner.
+
+Storage: Dates and timestamps should always be stored in the PostgreSQL database using its native, locale-neutral DATE and TIMESTAMP WITH TIME ZONE data types (e.g., in ISO 8601 format: YYYY-MM-DD HH:MM:SS).
+
+Numbers:
+
+Display: Use java.text.NumberFormat.getNumberInstance(currentLocale) for displaying general numerical values if locale-specific formatting for decimal separators (e.g., comma versus period) or grouping separators (for thousands) is required and differs between Arabic and English conventions.
+
+Currency:
+
+Configuration: The primary currency symbol (e.g., "SDG", "$", "€") and currency code (e.g., "SDG", "USD", "EUR") used by the optical center will be configured by the Admin in the CenterProfile.currency_symbol and CenterProfile.currency_code fields during setup.
+
+Display: Numerical currency values should be formatted using NumberFormat.getCurrencyInstance() configured with a Locale that is appropriate for the currency (if possible, though this can be complex for all world currencies), or more reliably, by using a standard DecimalFormat to ensure a fixed number of decimal places (e.g., 2 for most currencies). The configured currency_symbol from CenterProfile should then be appropriately prefixed or suffixed to the formatted number according to common conventions for that currency or the selected locale. Consistency in display is key.
+
+7.7. Content for Help/About Sections:
+
+Help/User Manual: The content for the User Manual/Help section must be prepared and made available in both English and Arabic, corresponding to the application's supported UI languages. The application should be capable of displaying the help content in the currently selected UI language.
+
+About Section: The static developer credit information in the "About Basariat POS" section will include the specified Arabic name ("أحمد محمد حمدناالله عبدالحافظ") and English name ("Ahmed Mohammed Hamednalla Abdelhafiz") along with the provided contact details (email, phone numbers). Other parts of the "About" section text (such as labels like "Version:", "Developed by:", "Copyright:") will be localized via the resource bundles.
+
+7.8. Testing Strategy for i18n/l10n:
+
+Translation Verification: All UI strings sourced from the resource bundles must be meticulously checked by native speakers or qualified translators for accuracy, completeness, grammatical correctness, and contextual appropriateness in both supported languages (Arabic and English).
+
+Layout Testing (RTL/LTR): Rigorous and systematic testing of all screens, dialogs, and custom UI components in both LTR (English) and RTL (Arabic) modes is mandatory. This must identify and lead to the correction of any layout issues, including but not limited to: overlapping components, truncated text, misaligned elements, incorrect icon mirroring, improper flow or ordering of controls, and issues with text input fields.
+
+Data Integrity & Display Testing: Verify that data entered in one language (especially data containing Arabic characters or other non-ASCII characters) is stored correctly in the UTF-8 encoded database and can be retrieved and displayed correctly and without corruption, even if the UI language is subsequently switched. Test bilingual fields (like product names) to ensure both language versions are handled correctly in data entry and display.
+
+Functionality Testing in Both Locales: Ensure that all application functionalities, business logic, workflows, and calculations operate as expected and produce correct results when the UI is set to English and when it is set to Arabic. There should be no functional discrepancies based on the selected language.
+
+Formatting Testing: Verify that dates, numbers, and currency values (using the configured symbol from CenterProfile) are displayed correctly, legibly, and appropriately for the active UI locale or the established application standard for financial figures.
