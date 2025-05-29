@@ -1,0 +1,139 @@
+Basariat POS - UI/UX Considerations (Final - EN - Themed)
+Target Users: The "Basariat POS" system is designed for two primary user roles: Cashiers/Receptionists and Administrators. Cashiers/Receptionists are the primary daily operators and may possess varying levels of technological proficiency; for this role, ease of use, efficiency in common tasks, and a minimal learning curve are paramount. Administrators (typically center owners or managers) will require access to more advanced configuration, reporting, and management features, and are expected to have a more comprehensive understanding of business operations. The design must cater to both, ensuring intuitiveness for all.
+
+Visual Theme (Inspired by "مركز منال عووضة للبصريات" branding - refer to IMG_20250515_110759.jpg for visual cues):
+The overall visual theme aims for a professional, clean, modern, and welcoming aesthetic, using a warm and approachable color palette.
+
+Color Palette:
+
+Main Background Substrates: Light beige or cream (e.g., Hexadecimal color codes: #F5F5DC - Beige, or #FAF8F0 - Old Lace/Warm Cream). This provides a soft, professional, and non-fatiguing backdrop for the application's interface, reducing visual strain during extended use.
+
+Primary Textual Elements & Dark Accentuation: Deep brown or dark maroon (e.g., Hex: #5D4037 - Brown Grey, or #4E342E - Deep Brown). These colors are selected to ensure high readability for all textual content (labels, input data, table content) and can also be used for defining borders, highlighting important UI elements or section headers, and for rendering monochromatic icons.
+
+Secondary Accent / Highlight Color: Muted desaturated purple or mauve (e.g., Hex: #BDB0D0 - Light Mauve, or, if a less distinctly purple tone is preferred, a warmer, more neutral #A1887F - Muted Brown/Rose). This color is to be used judiciously for signifying currently selected items in lists or tables, for primary action instigation components (e.g., "Save", "Confirm", "Start Shift", "Pay" buttons) to make them stand out, or for other key visual highlights intended to attract the operative's focused attention.
+
+Text on Dark Backgrounds: White (#FFFFFF) or a very light cream (e.g., #FFFDF5) is mandated for all textual content that appears upon dark-colored backgrounds (e.g., text on dark brown buttons or sidebar headers) to ensure maximum chromatic contrast and optimal legibility.
+
+Ancillary Supporting Colors: Lighter tonal variations of the primary and secondary accent colors may be employed for indicating hover states on interactive elements or for the subtle application of gradations if such visual effects are incorporated. A neutral grey (e.g., #B0BEC5 - Blue Grey, or a lighter #ECEFF1) can be designated for disabled interface elements, secondary or less important textual information, or subtle dividers.
+
+Overall Aesthetic Tenor: The application is intended to project an image of professionalism, cleanliness, modernity, and a welcoming user environment. The incorporation of overly intricate, visually distracting, or gratuitous decorative elements is to be strictly eschewed in favor of functional clarity and a focus on usability.
+
+Stylistic Conventions for User Interface Elements (JavaFX with CSS):
+
+Buttons (Command Instigation Components):
+
+Primary Action Buttons (e.g., "Save", "Confirm", "Start Shift", "Pay", "Login"): These shall utilize the designated secondary accent color (muted purple/mauve or warm brown) as their background substrate, with textual legends rendered in white or light cream to ensure high visibility and clear affordance as the main call to action.
+
+Secondary/Standard Buttons (e.g., "Cancel", "Close", "Print", "Add New Item"): These may employ either a lighter shade of the primary dark accent color (deep brown) as their background with white/light cream text, or a light beige background substrate with deep brown text and a subtle deep brown border.
+
+All button components are to feature subtly rounded corners (e.g., a CSS -fx-background-radius of 4 to 8 pixels) to impart a softer, more contemporary visual feel, echoing the rounded elements observed in the provided business card branding.
+
+Unambiguous visual feedback mechanisms for hover (e.g., slight darkening or lightening of the button color, or a subtle border highlight, achievable via CSS pseudo-classes like :hover) and press states (e.g., an inset effect or color change, via :pressed) are required for all interactive buttons.
+
+Input Fields (Text Fields, Combo Boxes, Date Pickers): These shall feature light beige/cream background substrates (-fx-control-inner-background), subtle deep brown borders (-fx-border-color), and rounded corners (-fx-background-radius) consistent with button styling. Textual input within these fields shall be rendered in deep brown. The focused state of an input field must be clearly indicated to the user (e.g., by a slightly thicker border, a change in border color to the secondary accent color, or a subtle glow effect, managed via CSS :focused pseudo-class).
+
+Panels/Cards (Informational Containers): Related informational elements and groups of controls are to be aggregated within visually distinct panels or card-like structures (e.g., using JavaFX TitledPane or custom styled Panes). These containers should feature light beige/cream backgrounds, rounded corners, and potentially a very subtle drop shadow effect (-fx-effect: dropshadow(...)) to create a sense of depth and visual separation from the main application background.
+
+Iconic Representations: A consistent and professionally designed set of monochromatic icons is mandated. These icons should preferably be rendered in the primary dark accent color (deep brown) or a neutral grey to maintain a clean and cohesive visual appearance. Icons must be simple, universally understandable (or accompanied by tooltips for clarity), and appropriately sized for their context (e.g., 16x16 or 24x24 pixels). Standard icon libraries (like Ikonli for JavaFX) or custom SVG icons should be considered.
+
+Initial System Setup Wizard: A clear, intuitive, and sequential (step-by-step) setup wizard is required for the first-time configuration of CenterProfile details by the optical center's owner or administrator. This wizard must also adhere to the application's established visual theme to ensure a consistent and professional initial user experience. Each step of the wizard should be clearly labeled with a title, and progress indication (e.g., "Step 1 of X") should be provided to the user.
+
+Language & Layout (Internationalization & Localization): The system must provide comprehensive support for both Arabic (designated as the default language) and English. A prominent and easily accessible language switching mechanism (e.g., a ComboBox or MenuButton located in a global application header/footer or within a dedicated settings panel) must be available, allowing users to change the UI language dynamically. Ideally, this change should take effect immediately across the entire application without requiring an application restart, though a restart may be an acceptable fallback if dynamic switching proves overly complex for initial implementation. The JavaFX UI framework must be leveraged to ensure that the layout correctly handles Right-to-Left (RTL) text direction and component flow for the Arabic language, and Left-to-Right (LTR) for the English language. This includes, but is not limited to: text alignment within all components (e.g., text aligned to the right in Arabic using -fx-text-alignment: right;), appropriate placement of UI elements (e.g., labels appearing to the right of input fields in RTL contexts, managed by layout panes like GridPane or HBox respecting nodeOrientation), mirroring of icons or graphical elements that have an inherent directional meaning (e.g., back/forward navigation arrows, sort indicators in TableView headers), and the overall directional flow of UI elements within containers and navigation structures. All UI screens and dialogs must be rigorously tested in both LTR and RTL modes to ensure correct rendering, usability, and absence of visual defects.
+
+Typography:
+
+Font Selection:
+
+For Arabic: A clean, modern, and highly legible sans-serif Arabic font is required. Recommended options include "Tajawal," "Cairo," or "Noto Sans Arabic," or a typeface with similar visual characteristics to the one observed on the provided business card. The chosen font must provide comprehensive support for all necessary Arabic characters, diacritics, and ligatures to ensure correct rendering.
+
+For English: A complementary sans-serif font that pairs well aesthetically with the chosen Arabic font is required. Recommended options include "Open Sans," "Lato," "Roboto," or "Inter." The selected English font should also be highly legible.
+
+Font Hierarchy & Scale: A clear and consistent typographic scale must be established (definable via CSS) and applied throughout the application. This scale will define font sizes, weights (e.g., regular, medium, bold using -fx-font-weight), and styles for different textual elements such as main view titles (e.g., 20pt bold), section headers (e.g., 16pt bold), standard body text and labels (e.g., 12pt regular), and button text (e.g., 12pt medium). Sizes are indicative and should be scalable based on a chosen base font size for the application.
+
+Readability: Ensure sufficient font sizes for all text elements, particularly for data entry fields and data displayed in tables (TableView), to maintain optimal readability and reduce potential eye strain for users during extended periods of use. Adequate line spacing (leading, e.g., using -fx-line-spacing in TextFlow or Label) and appropriate letter spacing (tracking, if necessary) should also be considered to further enhance readability.
+
+Simplicity & Clarity:
+
+Interface Design Philosophy: Prioritize a clean, uncluttered, and minimalist interface design. Avoid overwhelming users with excessive information, too many options, or overly dense layouts on any single screen. Employ techniques like progressive disclosure where appropriate, revealing more advanced or less frequently used options only when explicitly requested by the user (e.g., via an "Advanced Settings" button or expandable sections).
+
+Labels & Terminology: All user interface elements that require textual labels (buttons, input fields, menu items, table headers, etc.) must have clear, concise, and unambiguous labels, available in both supported languages (English and Arabic) via resource bundles. Terminology used throughout the application must be consistent (e.g., use "Save" consistently for committing changes, not "Submit," "Apply," or "Confirm" interchangeably for the same logical action). Avoid technical jargon where simpler, more common terms can be used to describe functions.
+
+Information Architecture & Visual Organization: Logically group related functions, controls, and data fields within forms, dialogs, and panels to create an intuitive information hierarchy that reflects user workflows. Utilize whitespace (negative space) effectively to visually separate distinct elements and groups, improve overall visual organization, reduce clutter, and guide the user’s focus to key areas of the interface.
+
+Visual Cues & Affordances: Employ subtle and consistent visual cues (e.g., standard icons for common actions like add/edit/delete, color-coding where appropriate and accessible – never relying on color alone to convey critical information, visual dividers between sections) to reinforce meaning, indicate interactivity (affordance – making it clear what is clickable/editable), and guide user interaction.
+
+Navigation:
+
+Main Navigation Structure: An intuitive and easily discoverable main navigation system is required. This could be implemented as a persistent sidebar menu (potentially collapsible, using JavaFX Accordion or a custom layout) with clear icons and textual labels, or a traditional top-level menu bar (MenuBar). If a sidebar is used, it could be styled with the primary dark accent color (deep brown) as its background and light-colored text/icons, with the currently selected section or module highlighted using the secondary accent color.
+
+Shift Controls & Status Display: Prominent, persistent, and easily accessible controls for "Start Shift," "Pause Shift," "Resume Shift," and "End Shift" are crucial for the Cashier workflow. A dedicated status indicator must clearly and continuously display the current shift status (e.g., "No Active Shift," "Shift Active: [User Name] - Started: [HH:mm]," "Shift Paused") and the name of the user responsible for the active/paused shift. This indicator should be located in a consistent, highly visible area of the main application window, such as a dedicated status bar at the bottom (created with an HBox or ToolBar) or a section within a global header.
+
+Help Menu: A "Help" top-level menu item (or an equivalent, easily accessible help icon, e.g., '?') should be clearly visible and accessible from all main sections of the application. This menu must contain at least two options: "View User Manual" (or similar text, to open the help documentation) and "About Basariat POS" (to open the About dialog).
+
+Visual Hierarchy & Navigational Consistency: Establish a clear visual hierarchy within screens to guide the user's eye to important elements and primary actions. Ensure consistent placement of common navigational and action buttons (e.g., "Save," "Cancel," "Add New," "Back" buttons) across similar types of screens and dialogs. Provide easy and consistent mechanisms for users to return to previous screens or main application sections where appropriate (e.g., "Back" buttons in wizards or multi-step processes, "Cancel" buttons to close dialogs without saving changes).
+
+Forms & Data Entry:
+
+Optimization for Efficiency & Accuracy: Design all data entry forms to optimize for speed of completion, accuracy of data input, and overall ease of use.
+
+Use dropdown controls (JavaFX ComboBox) for selecting values from predefined, limited lists (e.g., product categories, banks, statuses, lens attributes where applicable) to reduce typing, prevent spelling errors, and ensure data consistency.
+
+Use dedicated date picker controls (JavaFX DatePicker) for all date fields, defaulting to a sensible date (e.g., current date for new orders or expense entries) where appropriate, and allowing easy navigation through months/years.
+
+Consider implementing auto-complete suggestions for fields like patient search (by name or ID) or product search (by name or code), if technically feasible and beneficial for workflow speed, potentially using libraries like ControlsFX AutoCompleteTextField.
+
+Clearly indicate all mandatory fields that must be filled by the user (e.g., using an asterisk '*' symbol next to the label, or a distinct border color/icon for required fields that are currently empty or contain invalid input).
+
+Provide sensible default values for fields where appropriate to minimize data entry effort (e.g., default quantity of '1' when adding an item to a sale).
+
+Input Validation: Implement real-time (as-you-type or on-blur/focus-lost) input validation for critical fields. Validation feedback should be non-intrusive (e.g., a small icon with a tooltip next to the field, a change in border color to indicate an error) with helpful error messages displayed close to the field in error, or in a consolidated summary area on the form. Error messages must be in the selected UI language and clearly explain the nature of the error and how to correct it (e.g., "Phone number must be numeric," "Opening float cannot be negative").
+
+Keyboard Navigation & Shortcuts: Ensure full and logical keyboard navigation (using Tab to move to the next focusable element, Shift+Tab for the previous, Arrow keys for navigating within controls like tables or lists) for all interactive elements within forms. Implement common keyboard shortcuts for frequent actions (e.g., Ctrl+S for Save, Ctrl+N for New Item/Record where applicable, Enter to submit forms where appropriate and unambiguous, Esc to close dialogs without saving).
+
+Start Shift Dialog: A simple, modal dialog (Stage with Modality.APPLICATION_MODAL) prompting the user to input the "Opening Cash Float" amount using a formatted TextField (allowing only numeric input). It should clearly display the name of the user starting the shift and the current system time. Buttons: "Start Shift" (primary action, disabled until valid float is entered), "Cancel".
+
+End Shift Dialog: A modal dialog prompting the user to input the "Closing Cash Counted" amount (formatted TextField) and optional multi-line shift notes (TextArea). Before final submission, this dialog must display the system-calculated "Expected Cash in Drawer" and the resulting "Cash Variance" (Over/Short) for user review and acknowledgment. Buttons: "End Shift & Generate Report" (primary action, disabled until valid closing cash is entered), "Cancel".
+
+Patient Form: Include a clearly labeled CheckBox: "Agreed to receive WhatsApp notifications regarding appointments and orders." A Tooltip could provide further explanation about what this consent entails.
+
+WhatsApp Pre-filled Message Dialog (Optional Review Step): If implemented to allow staff to review and potentially make minor edits to the pre-filled WhatsApp message before opening the wa.me/ link, this should be a simple, themed modal dialog. It should display the patient's phone number (read-only), the generated pre-filled message in an editable TextArea, and have buttons like "Open WhatsApp" (or "Generate Link & Open") and "Cancel".
+
+Abandoned Order Workflow UI: When an authorized user marks an order as "Abandoned", the system must present a clear, modal dialog. This dialog should list the items in the order (product name, quantity ordered) in a TableView or ListView and provide an easy mechanism (e.g., checkboxes within the table row) for the user to indicate which specific items are being returned to stock. The dialog should require explicit confirmation (e.g., "Confirm Abandonment & Restock Selected Items") before proceeding with the abandonment process and triggering the associated backend logic (stock updates, loss expense creation).
+
+Feedback & System Communication:
+
+User Action Feedback: Provide immediate and clear visual feedback for all significant user actions (e.g., button press effects, visual confirmation that data has been saved successfully – perhaps via a temporary status message or a subtle UI change, an item has been added to an order, etc.). Confirmation messages should be brief, informative, and styled according to the application theme, potentially using JavaFX Notification or custom pop-up dialogs.
+
+System Status & Progress: Clearly indicate if no shift is active when a user attempts to perform financial transactions that require an active shift (e.g., relevant UI controls should be disabled with a Tooltip explaining the requirement, or a non-intrusive message should be displayed in a status bar). Use progress bars (ProgressBar) or indeterminate progress indicators (ProgressIndicator, e.g., spinning icon) for operations that are expected to take more than a couple of seconds (e.g., generating complex reports, initial data loading on application start, complex database operations). The UI should not appear frozen during such operations; these should ideally run on a background thread with UI updates handled on the JavaFX Application Thread.
+
+Shift Operations Feedback: Provide explicit confirmation messages for shift start, end, pause, and resume actions, clearly indicating the new shift status and any relevant details (e.g., "Shift started successfully with opening float of [amount]").
+
+Key Screen Mockup Concepts (incorporating the theme and functionalities):
+
+Initial Setup Wizard: A multi-step modal dialog (Stage in JavaFX) guiding the Admin user through the input of CenterProfile data. Each step should be clearly labeled with a title, and there should be an indication of progress (e.g., "Step 1 of 3" using a Pagination control or simple labels). Use the standard beige background, deep brown text for labels and input, and the secondary accent color (purple/mauve or warm brown) for "Next", "Previous", and "Finish" navigation buttons.
+
+Login Screen: A simple, clean view (Scene) with a beige background. Display the application logo (if one is configured in CenterProfile or a default "Basariat POS" logo/text styled prominently). Input fields (TextField for username, PasswordField for password) styled with rounded corners and subtle brown borders. The "Login" button should be the primary action button (styled with the secondary accent color). A language selection ComboBox (English/Arabic) should be clearly visible.
+
+Main Dashboard/Window: The main application window (Stage containing a primary Scene and main layout, e.g., BorderPane) should have a title bar displaying "Basariat POS - [Center Name from CenterProfile]". Implement the main navigation (sidebar using VBox or ListView within a ScrollPane, or a top MenuBar) styled as described previously. The main content area will have a beige background. Consider using cards or panels (styled Panes or TitledPanes with rounded corners and subtle shadows) to display quick stats or shortcuts on a dashboard view (e.g., today's total sales (if shift active), number of upcoming appointments, count of low stock item count).
+
+Shift Status Area: A clearly visible and persistent area (e.g., in a status bar created with an HBox or ToolBar at the bottom of the main window, or a dedicated section in a global header) displaying the current shift status: "No Active Shift," or "Shift Active: [User Name] - Started: [HH:mm]," or "Shift Paused." Buttons for context-appropriate shift actions ("Start Shift" if none active; "Pause Shift" / "End Shift" if a shift is active) should be readily available and clearly labeled, possibly with icons.
+
+Patient Screen, Sales Order Screen, Inventory Screen, Expense Entry Screen: These data-centric views should maintain consistency in layout and control usage. Use TableView for displaying lists of records, with clear column headers (perhaps with a light brown or light purple/mauve background using CSS and dark brown text). TableView rows should have sufficient padding for readability. Alternating row colors (e.g., white and a very light beige, achievable with CSS pseudo-classes like :odd or by custom cell factories) can enhance readability for large tables. Forms for adding/editing records within these views should follow the styling for input fields and buttons. Crucially, UI elements related to financial transactions on these screens (e.g., "Add to Order" button, "Make Payment" button, "Save Expense" for cash expenses) will be disabled if no shift is currently active for the logged-in user, with a Tooltip explaining the requirement.
+
+Shift Report View: A dedicated view or dialog to display shift reports. It must be cleanly formatted with a summary section at the top (displaying opening float, closing cash, system-calculated totals for cash/bank transactions, expected cash, and variance in a clear, easy-to-read tabular or labeled layout using GridPane or VBox with Labels) and a scrollable, sortable TableView for the detailed list of transactions below. A "Print Report" option must be prominently available.
+
+Settings Screen (Admin): Could utilize a TabPane in JavaFX for different settings categories, or a clear list-based navigation (e.g., a ListView on the left acting as a menu, with the content area on the right displaying the selected settings panel). Settings areas include: User Management, Center Profile Management, Bank Names, Expense Categories, Application Settings (including WhatsApp templates), and View Audit Logs. Each section should be presented clearly and consistently.
+
+Help/User Manual View: If using JavaFX WebView to display bundled HTML content, ensure the content is well-formatted, easily navigable (e.g., with a sidebar table of contents within the HTML, internal links), and searchable if the WebView's engine supports it or if custom search is implemented. If opening an external PDF, ensure a smooth user experience by launching the system's default PDF viewer.
+
+About Dialog: A simple, clean, non-resizable modal dialog (Stage with Modality.APPLICATION_MODAL) displaying the application name ("Basariat POS"), version number, developer credits (Ahmed Mohammed Hamednalla Abdelhafiz, email, phone numbers), and copyright notice. Styled consistently with the application theme (beige background, brown text).
+
+Accessibility:
+
+Color Contrast: While adhering to the aesthetic theme, it is imperative to ensure that there is sufficient color contrast between textual elements and their respective background substrates for all UI components. This is to meet, at a minimum, WCAG (Web Content Accessibility Guidelines) AA contrast ratios for readability, especially for users with visual impairments. Use online contrast checking tools during design and development to verify color choices.
+
+Keyboard Navigation: Ensure full and logical keyboard navigability for all interactive elements within the application (using Tab to move to the next focusable element, Shift+Tab for the previous, Arrow keys for navigating within controls like tables or lists, Enter/Spacebar to activate buttons or select items, Esc to close dialogs). Focus indicators (e.g., a distinct border or highlight around the focused element, provided by JavaFX default or enhanced with CSS) must be clearly visible at all times.
+
+Font Scalability (Consideration for Future Enhancement): While not explicitly required for the initial version, consider if the UI can be designed to gracefully handle minor system-level font size adjustments made by the user for accessibility reasons, without breaking layouts significantly. This might involve using relative font sizes (em/rem in CSS if applicable to JavaFX theming) or ensuring layouts are flexible.
+
+Tooltips: Provide helpful and concise tooltips (Tooltip in JavaFX) for all toolbar icons, buttons that may only have icons without text, or less obvious UI elements to clarify their function, especially for new users. Tooltips should also be localized and appear promptly on hover.
