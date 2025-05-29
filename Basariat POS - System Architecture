@@ -1,0 +1,113 @@
+Basariat POS - System Architecture (Final - EN)
+2.1. Architectural Style:
+The "Basariat POS" system will be implemented using a Client-Server architectural style for each individual installation.
+
+Client: A rich desktop application developed using Java 21, with JavaFX serving as the framework for the User Interface (UI). The client application, officially named "Basariat POS," will be installed on one or more computers within the optical center's premises.
+
+Server: A PostgreSQL relational database server will act as the backend, running on a designated main computer (which could be one of the POS terminals if suitably powerful, or preferably a dedicated local server machine) within the optical center. Each optical center utilizing the "Basariat POS" system will operate its own independent PostgreSQL database instance, ensuring data isolation.
+
+Data Access: jOOQ (Java Object Oriented Querying) will be the framework utilized within the Java client application for all interactions with the PostgreSQL database. This choice promotes type-safety in SQL construction, provides a fluent API for database operations, and aids in mapping database results to Java objects.
+
+This architectural model centralizes data storage, management, and integrity for a single optical center, while concurrently allowing multiple authorized users within that center's Local Area Network (LAN) to access and interact with their specific system instance.
+
+2.2. Component Breakdown (Conceptual Layers within the Client Application):
+
+The client application ("Basariat POS") will be architecturally structured into distinct logical layers to enhance modularity, promote separation of concerns, improve maintainability, and facilitate testability:
+
+Presentation Layer (UI Package - e.g., com.basariatpos.ui):
+
+Responsibilities: This layer is exclusively responsible for all aspects of user interaction and data presentation. It renders the graphical user interface (typically as Scene objects hosted within Stages in JavaFX terminology), captures user input from various UI controls (e.g., text fields, combo boxes, buttons), performs initial, superficial input validation for immediate user feedback (e.g., checking for empty required fields), and delegates user-initiated actions (JavaFX events) to the appropriate controllers or services in the layer below. This layer encompasses all visual forms, dialogs, panels, custom UI components, the initial center profile setup wizard, dedicated interfaces for shift management (start/end/pause/resume operations, cash float entry), the display mechanism for help documentation (potentially using JavaFX WebView for HTML content), and the "About Basariat POS" information dialog.
+
+Technologies: JavaFX (version compatible with Java 21, managed as separate modules). FXML (Extensible Markup Language) is strongly recommended for defining the static structure and layout of UI views, thereby separating the visual presentation from the Java controller logic. CSS (Cascading Style Sheets) will be utilized extensively for styling all JavaFX application components to achieve the defined visual theme and ensure a consistent look and feel.
+
+Key Components (Examples): The main application window (Stage containing a primary Scene and main layout), login screen view (LoginView.fxml), dashboard view (DashboardView.fxml), shift control panel/dialog views (e.g., StartShiftDialog.fxml, EndShiftDialog.fxml), various FXML views with their associated JavaFX controller classes for data entry and management tasks (e.g., PatientView.fxml & PatientController.java, SalesOrderView.fxml & SalesOrderController.java, InventoryItemView.fxml & InventoryItemController.java), JavaFX TableView components for displaying lists of data (patients, products, orders, etc.), custom dialogs for specific interactions (e.g., payment processing, stock adjustment reason).
+
+Application Logic / UI Controller Layer (Typically residing within the UI package or a dedicated sub-package, e.g., com.basariatpos.ui.controller):
+
+Responsibilities: This layer acts as an intermediary (or "controller" in MVC/MVP-like patterns) between the UI Views (defined by FXML and managed by JavaFX components) and the Business Logic Layer (Services). Controllers in this layer are responsible for handling user actions triggered from the UI (e.g., button clicks, selection changes, form submissions), orchestrating the flow of data by retrieving information from services for display in the UI (populating UI controls), performing UI-specific logic and state management (e.g., enabling/disabling controls based on context or user permissions), and managing the active shift state within the application session for the current user. In JavaFX, controllers are typically Java classes directly associated with, and injected into, FXML files.
+
+Technologies: Java, JavaFX (controller classes, event handling mechanisms, data binding capabilities).
+
+Key Components (Examples): MainFrameController (for the main application window and global navigation), LoginController, CenterProfileSetupController, PatientControllerFXML, SalesOrderControllerFXML, ShiftOperationsControllerFXML (managing UI for shift start/end/pause), ShiftReportViewController, InventoryControllerFXML, AdminSettingsController.
+
+Business Logic Layer (Service Package - e.g., com.basariatpos.bus):
+
+Responsibilities: This layer encapsulates the core business rules, application-specific workflows, and complex data processing operations of the "Basariat POS" system. It is responsible for tasks such as calculating prices for custom spectacle lenses based on various parameters, processing abandoned orders (which involves logic for stock adjustments and financial loss calculation), managing the intricate logic for shift reconciliation, validating complex business constraints that extend beyond simple data type or format checks, and orchestrating calls to the Data Access Layer for data persistence and retrieval. It ensures that all business operations are performed consistently, correctly, and in accordance with defined business policies. This layer should be independent of UI technology.
+
+Technologies: Java.
+
+Key Components (Examples): Service classes designed around major domain areas or business processes, such as PatientService, InventoryService, ProductService, SalesOrderService (including abandoned order logic), PaymentService, PurchaseOrderService, ExpenseService, AppointmentService, ReportGenerationService (to prepare data for reports), UserService (including permission checks), ShiftService (including start, end, pause, resume, interruption handling, and reconciliation logic), CenterProfileService, AuditLogService, WhatsAppNotificationService (specifically for Click-to-Chat link generation and pre-filled message construction).
+
+Data Access Layer (DAL Package - e.g., com.basariatpos.dal):
+
+Responsibilities: This layer abstracts all interactions with the PostgreSQL database, providing a clean API for the Business Logic Layer to access and manipulate data without needing to know the specifics of SQL or JDBC. It is responsible for performing Create, Read, Update, and Delete (CRUD) operations on database entities, executing complex queries (often defined with jOOQ's fluent API), and calling stored procedures (e.g., StartShift, EndShift, ProcessAbandonedOrder) defined in the database. It utilizes jOOQ to generate type-safe SQL, map database results to Java objects (which could be jOOQ's generated Record classes or custom Data Transfer Objects/Domain Objects), and manage database connections and transactions to ensure atomicity and data integrity for all database operations.
+
+Technologies: Java, jOOQ, JDBC (via the PostgreSQL JDBC driver).
+
+Key Components (Examples): Repository classes or Data Access Objects (DAOs) for each primary domain entity (e.g., PatientRepository, SalesOrderRepository, InventoryItemRepository, ShiftRepository, CenterProfileRepository, UserRepository, AuditLogRepository, etc.). This layer will heavily utilize the Java classes generated by jOOQ from the database schema.
+
+Domain Model Layer (Model Package - e.g., com.basariatpos.model):
+
+Responsibilities: This layer contains Plain Old Java Objects (POJOs) or Java Records that represent the data structures and core entities of the system (e.g., Patient, Product, SalesOrder, Shift, CenterProfile, Payment, Expense). These objects are primarily used for transferring data between the different layers of the application (e.g., from DAL to Services, from Services to Controllers/UI). They may also encapsulate simple validation logic or behavior directly related to the data they represent (e.g., a method in a SalesOrder model to calculate its own item count). If JavaFX properties (StringProperty, IntegerProperty, ObjectProperty, etc.) are used for direct data binding to UI elements in JavaFX views, these properties might reside within these model classes or, more commonly, in specialized UI-specific model classes (ViewModels or Presenters) that wrap the core domain objects. jOOQ's generated Record classes can also serve as data carriers, especially between the DAL and Service layers.
+
+Technologies: Java.
+
+Configuration Management (Config Package - e.g., com.basariatpos.config):
+
+Responsibilities: This component is responsible for loading, managing, and providing application-wide access to configurations. This includes the optical center's specific details (loaded from the CenterProfile table via CenterProfileService/Repository), any general application settings (potentially from the ApplicationSettings database table or external .properties files, such as default WhatsApp message templates or UI behavior flags), and managing the current user session context (the logged-in User object or ID) and active shift session context (the active Shift object or ID). It will interact with the database procedures set_app_user() and set_app_shift() via a service/repository call to set these contexts in the database session for auditing and transaction linkage.
+
+Technologies: Java.
+
+Key Components (Examples): AppConfigLoader (reads external config files), UserSessionService (or AppSessionManager - manages logged-in user and active shift state within the Java application and synchronizes with DB session variables).
+
+Utilities (Util Package - e.g., com.basariatpos.util):
+
+Responsibilities: This package provides a collection of common, reusable utility functions and helper classes that are used across various layers and modules of the application. Examples include utilities for date and time formatting and manipulation, string utility functions (e.g., for validation, encoding), input validation helpers (e.g., for common patterns like phone numbers or email addresses), file I/O helpers (e.g., for accessing local logo images or help documentation files), helper methods for report generation (e.g., formatting data for CSV export), and utilities for generating WhatsApp "Click-to-Chat" links or for opening web browser links using java.awt.Desktop.browse() or JavaFX's HostServices.showDocument().
+
+Technologies: Java.
+
+Internationalization (i18n Package - e.g., com.basariatpos.i18n):
+
+Responsibilities: This component manages all aspects of the application's internationalization and localization capabilities. It is responsible for loading and providing access to localized UI strings from Java ResourceBundles based on the user's currently selected language (Arabic or English).
+
+Technologies: Java (ResourceBundle API).
+
+Key Components (Examples): LocaleManager (a class to get and set the current application Locale), MessageProvider (a utility class to retrieve localized strings by their unique keys from the active resource bundle).
+
+Database Layer (Server-Side Component):
+
+Responsibilities: The PostgreSQL database server acts as the authoritative source for all persistent application data. It is responsible for storing data in accordance with the defined relational schema, executing SQL queries, stored procedures, functions, and triggers initiated by the Data Access Layer of the "Basariat POS" client application. It plays a crucial role in ensuring data integrity (through constraints), data consistency, concurrency control (for multiple client connections), and data durability.
+
+Technologies: PostgreSQL (a recent stable version, e.g., 15 or 16).
+
+Key Components: Tables (e.g., CenterProfile, Users, Shifts, Patients, InventoryItems, SalesOrders, Payments, Expenses, AuditLog as defined in db_script_basariat_pos_final_v3.sql), Views (e.g., SalesDetailedView, ShiftReportSummaryView), Stored Procedures (e.g., StartShift, EndShift, ProcessAbandonedOrder), Functions (e.g., GenerateProfitAndLossStatement, get_current_app_user_id), and Triggers (e.g., for automatically updating updated_at timestamps, calculating derived values, enforcing referential integrity, and performing audit logging).
+
+2.3. Deployment Strategy:
+
+Database Server Deployment: An instance of PostgreSQL must be installed and configured on a reliable computer within the optical center. This machine can be one of the POS terminals if it is sufficiently powerful and dedicated, but preferably it should be a separate local server machine to ensure better performance and availability for the database. The optical center's staff or their designated IT support is responsible for the regular backup (e.g., daily automated backups using pg_dump or other tools) and routine maintenance (e.g., vacuuming, monitoring) of this PostgreSQL server and its data.
+
+Client Application Deployment ("Basariat POS"):
+
+The compiled "Basariat POS" JavaFX application will be packaged, preferably as a native installer or bundle for the target operating system (primarily Windows) using the jpackage tool. This bundle should ideally include a custom Java Runtime Environment (JRE created with jlink) that contains all necessary Java 21 modules and the required JavaFX modules, thus simplifying installation for the end-user by not requiring a separate JRE/JavaFX pre-installation.
+
+This installer/bundle is then installed on each computer (Windows, or potentially Linux/macOS if tested and packaged for them) that will be used to access the system (e.g., cashier stations, administrator's office, optometrist's room).
+
+Initial System Setup at a New Center (Post-Installation):
+
+After PostgreSQL is installed and running on the server machine, the database administrator or the person setting up "Basariat POS" will execute the full SQL script (db_script_basariat_pos_final_v3.sql) using a PostgreSQL client tool (e.g., psql or pgAdmin). This script creates the "Basariat POS" database, its schema, all tables, views, functions, procedures, triggers, and inserts any essential initial lookup data (like default categories).
+
+The "Basariat POS" client application is then installed on at least one machine (typically the Administrator's machine first).
+
+On the very first launch of the client application on any machine within the center (or specifically when an Admin first logs in and the system detects an empty CenterProfile), if the CenterProfile table in the database is empty (or a specific setup flag indicates a new, unconfigured installation), the application will automatically initiate the "Initial Center Profile Setup Wizard."
+
+An Admin user will complete this wizard, inputting their optical center's specific details (name, address, contact info, logo path, currency settings, receipt footer message, etc.), which are then validated and saved into the CenterProfile table.
+
+Following the center profile setup, the Admin will proceed to create other user accounts (e.g., for Cashiers) and configure their specific permissions using the User Management interface.
+
+The Admin should also be prompted to change the default Admin password (if one was set by script) immediately.
+
+Network Configuration: All client machines running "Basariat POS" must be connected to the same Local Area Network (LAN) as the computer hosting the PostgreSQL database server. The client application instances will need to be configured (e.g., via a properties file bundled with the application, or through a first-run configuration dialog if the database location isn't discoverable) with the IP address or hostname and the port number (default 5432 for PostgreSQL) of the database server.
+
+Firewall Configuration: Any software or hardware firewalls present on the database server machine (and potentially on client machines, or the network itself) must be configured to allow incoming TCP/IP connections to the PostgreSQL port from the IP addresses or the defined subnet of the client machines on the LAN.
+
+Help Documentation Deployment: The User Manual files (e.g., a set of interlinked HTML files or a single PDF document, available in both English and Arabic) will be bundled with the application installer or package. This ensures they are available locally for offline access through the application's "Help" menu (e.g., HTML content can be displayed within an embedded JavaFX WebView component).
