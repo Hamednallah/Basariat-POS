@@ -1,0 +1,237 @@
+Basariat POS - System Overview (Final - EN)
+1.1. Introduction:
+"Basariat POS" is a desktop-based Point of Sale (POS) and Financial Management system, with its user interface developed using JavaFX, designed specifically for the operational and administrative needs of optical centers. It aims to be a resellable software product, allowing individual optical center owners to configure it with their specific business details during an initial setup phase and manage these settings thereafter. The system is engineered to streamline daily operations, including comprehensive shift management for cashiers with cash reconciliation; provide robust inventory control for optical goods; accurately track sales transactions and patient diagnostic histories; manage business expenses, including the accounting for losses from abandoned orders; deliver precise financial insights based on actual cash flow; and facilitate essential patient communication via a manual WhatsApp "Click-to-Chat" mechanism. "Basariat POS" supports both English and Arabic languages, with Arabic designated as the default language, and ensures correct layout and text direction for both.
+
+1.2. Goals:
+The primary strategic goals of the "Basariat POS" system are to:
+
+Enable Center-Specific Customization: Allow individual optical centers to easily set up and customize the system with their unique business profile information (including center name, address, contact details, logo image, operational currency, and custom messages for receipts) through an intuitive initial setup wizard and ongoing administrative settings.
+
+Efficient Patient Information Management: Provide a centralized and efficient system for managing comprehensive patient records, their complete optical diagnostic history over time, and their explicit consent for receiving notifications via WhatsApp.
+
+Robust Shift Management & Accountability: Implement a comprehensive and auditable shift management system for cashier operations. This includes formal start and end of shift procedures, mandatory declaration of opening cash float and closing cash counted by the user, functionality for pausing and resuming active shifts, clear handling of interrupted shifts, and the generation of detailed shift reports to ensure accountability and facilitate accurate cash reconciliation.
+
+Comprehensive Inventory Control: Offer a detailed inventory management module for a wide range of optical goods such as frames (medical and sunglasses), ophthalmic lenses, sunglass lenses (plano and prescription), contact lenses (medical and cosmetic), ready-made reading glasses, optical solutions, lens cleaners, and various accessories. This includes features for managing purchase orders, processing stock receipts, tracking item costs and selling prices, and alerting for low stock conditions.
+
+Streamlined & Accurate Sales Processing: Facilitate an efficient and accurate sales order process, from item selection (including complex configurations for custom spectacle lenses with specific parameters and business rule enforcement) through to payment processing. All sales transactions must be securely linked to an active user shift for accountability.
+
+Flexible Payment Handling: Support various payment methods, primarily 'Cash' and 'Bank Transaction', and effectively manage full and partial payments against sales orders, with clear tracking of outstanding balances.
+
+Effective Management of Problematic Orders & Appointments: Provide a clear and systematic mechanism to manage and account for patient appointments that are missed (e.g., 'No Show' status) and sales orders that are ultimately abandoned by patients. This includes defined processes for the potential restocking of eligible items from abandoned orders and the systematic recording of any financial loss incurred on unrecoverable goods as a specific business expense.
+
+Accurate Expense Tracking & Financial Control: Allow for the meticulous recording and categorization of all business operational expenses. This includes specific accounting for losses incurred from abandoned customer orders and ensuring that cash expenses paid from the till are correctly linked to active shifts for accurate cash reconciliation.
+
+Insightful & Actionable Reporting: Deliver a suite of insightful financial reports, with a particular emphasis on a Profit & Loss statement that is calculated on an actual cash received basis and accurately considers the true cost of goods sold (for completed sales) and all operational expenses. Additionally, provide detailed operational reports, including comprehensive shift reports with itemized transaction lists and cash variance calculations, inventory valuation reports, and tools for tracking outstanding customer payments.
+
+User-Friendly Interface & Experience (JavaFX): Offer a user-friendly, intuitive, and aesthetically pleasing graphical user interface, developed using JavaFX. The UI must be suitable for staff with varying levels of technical expertise and must strictly adhere to the defined visual theme (inspired by provided branding materials) and usability guidelines.
+
+Secure System Access & Operations: Ensure system security through robust role-based access control (Admin, Cashier roles) and a system of granular, configurable permissions that govern access to specific functionalities and data modification capabilities.
+
+Comprehensive Audit Trail: Maintain a comprehensive and immutable audit trail by logging all critical data changes (creations, updates, deletions) and significant system events, including the identification of the responsible user and precise timestamps for all logged actions.
+
+Integrated User Support: Equip users with a helpful and easily accessible User Manual / Help section integrated directly into the application, providing clear guidance on system usage and features.
+
+Application & Developer Information: Include a standard "About Basariat POS" section within the application that provides essential information such as the current application version number and contact details for the developer (Ahmed Mohammed Hamednalla Abdelhafiz).
+
+Facilitated Patient Communication: Aid optical center staff in sending important notifications to consenting patients (e.g., appointment reminders, order ready for pickup alerts) via a manual WhatsApp "Click-to-Chat" feature, which utilizes pre-fillable and configurable message templates.
+
+1.3. Scope:
+The "Basariat POS" system will encompass the following functionalities and modules:
+
+System Setup & Configuration:
+
+An initial, guided setup wizard for entering CenterProfile data (including center name, full address, contact numbers, email, website, local path to logo image file, tax identifier, default currency symbol and code, and a default footer message for receipts).
+
+An administrative interface for ongoing viewing and modification of all CenterProfile details.
+
+Management (CRUD operations by Admin) of core lookup data lists: BankNames (for bank transactions), ExpenseCategories (including a system-suggested or admin-creatable "Loss on Abandoned Orders" category), and ProductCategories.
+
+Management (CRUD by Admin) of ApplicationSettings (e.g., for storing default WhatsApp message templates, application version).
+
+User Management & Security:
+
+User account creation and management, supporting distinct roles ('Admin', 'Cashier').
+
+Secure password management, including storage of hashed passwords and an Admin facility for password resets.
+
+Role-based access control (RBAC) supplemented by a system of granular, configurable permissions for specific actions (e.g., CAN_GIVE_DISCOUNT, PROCESS_ABANDONED_ORDERS).
+
+Secure session management to track the current logged-in user and their active shift, including the mechanism to set corresponding database session variables (app.current_user_id, app.current_shift_id) for use by database triggers and procedures.
+
+Shift Management:
+
+Manual initiation of a "Start Shift" by an authorized user, requiring the declaration of an opening_float cash amount.
+
+Manual initiation of an "End Shift" by the user, requiring the input of the closing_cash_counted amount.
+
+Automatic system calculation of expected_cash_in_drawer and cash_variance (surplus/shortage) at the end of each shift.
+
+Functionality for a user to "Pause" their active shift and subsequently "Resume" it.
+
+System handling for "Interrupted" shifts (e.g., due to unexpected application closure), prompting the user on next login to resume or (with appropriate authority) forcibly end the shift.
+
+Strict association of all relevant financial transactions (sales, payments, cash-based expenses) processed by a user with their currently active shift.
+
+Prevention of financial transactions if no shift is currently active for the logged-in user.
+
+Generation of detailed shift reports, including a summary section (opening/closing amounts, totals per payment method, variance) and a comprehensive list of all transactions processed during the shift. These reports must be accessible to the user who conducted the shift and to Admin users for all shifts.
+
+Patient Management:
+
+Patient registration, search, view, and update functionalities (including a system-generated unique ID, full name, primary phone number, optional secondary phone number, address).
+
+Storage and chronological retrieval of a patient's complete optical diagnostic history.
+
+Management of patient consent for receiving WhatsApp notifications (via an whatsapp_opt_in boolean flag).
+
+Optical Diagnostics Management:
+
+Data entry for optical prescriptions, including parameters for distance vision (Sphere, Cylinder, Axis for both OD and OS), near addition power (ADD for OD and OS), Interpupillary Distance (IPD), a flag for contact lens prescriptions (is_contact_lens_rx), and a text field for specific contact_lens_details.
+
+Inventory Management:
+
+Management (CRUD by Admin) of ProductCategories (bilingual names).
+
+Management (CRUD by Admin) of master Products (defining services vs. stock items, bilingual names/descriptions, linkage to categories).
+
+Management (CRUD or Deactivate by authorized users) of specific InventoryItems (linked to a master Product, including brand, bilingual specific names, JSON attributes for variations like color/size/power, selling_price, cost_price, quantity_on_hand, min_stock_level, unit_of_measure, and active status).
+
+Automatic update of InventoryItem.cost_price based on the purchase_price_per_unit from the last received PurchaseOrderItem.
+
+Functionality for authorized users to perform manual stock adjustments, requiring a mandatory reason for each adjustment, with all such adjustments being audit logged.
+
+Generation of a Low Stock Report or a visual alert for items at or below their min_stock_level.
+
+Purchase Order (PO) lifecycle management: creation of POs, addition of InventoryItems to POs (specifying quantity and purchase price), and processing of stock receipts against POs (updating PurchaseOrderItems.quantity_received and triggering automatic updates to InventoryItems.quantity_on_hand and cost_price).
+
+Sales Order Processing (Must be linked to an Active Shift):
+
+Creation of new sales orders, which can be linked to a registered patient or processed as anonymous sales.
+
+Addition of various types of items to a sales order:
+
+Stock InventoryItems (e.g., frames, sunglasses, contact lens boxes, solutions).
+
+Custom Spectacle Lenses (requiring selection of a frame, input/linkage of patient prescription, selection of lens material, shade, reflection type, with enforcement of business rules like "Blue Cut lenses are only Antireflective"; all details stored in SalesOrderItems.prescription_details JSONB).
+
+Standard pre-defined services.
+
+Custom quote services (requiring manual entry of description and price).
+
+Automatic calculation of SalesOrders.subtotal_amount by a database trigger when items are added/modified/deleted.
+
+Application of a fixed monetary discount_amount to the overall sales order (subject to user permission). total_amount and balance_due are automatically calculated database-generated columns.
+
+Management of sales order statuses through a defined lifecycle: 'Pending', 'Awaiting Lenses', 'Ready for Pickup', 'Completed', 'Cancelled', 'Abandoned'.
+
+Automatic deduction of stock for InventoryItems included in a sales order when that order's status is changed to 'Completed' (achieved by the application calling the ProcessOrderCompletionStockUpdate database procedure).
+
+Abandoned Order Management:
+
+A defined process, initiated by an authorized user (with specific permission), to mark a sales order as 'Abandoned'. This will invoke the ProcessAbandonedOrder database procedure.
+
+A user interface mechanism to allow the user to select which items (if any) from the abandoned order are being physically returned to stock.
+
+The ProcessAbandonedOrder procedure will update the stock levels for restocked items and set the SalesOrderItems.is_restocked_on_abandonment flag.
+
+The procedure will also calculate the total cost of any unrecoverable (non-restocked) goods from the abandoned order and automatically create an entry in the Expenses table for this loss amount, categorizing it appropriately (e.g., "Loss on Abandoned Orders") and linking it to the current active shift.
+
+Payment Processing (Must be linked to an Active Shift):
+
+Recording of full and partial payments made against sales orders, invoked by the application calling the RecordPaymentAndUpdateSalesOrder database procedure.
+
+Support for 'Cash' and 'Bank Transaction' as primary payment methods.
+
+Automatic update of the SalesOrders.amount_paid field upon successful payment recording.
+
+Generation of sales receipts and payment receipts, which must include CenterProfile details (name, address, contact, logo if configured), order/payment specifics, and any configured receipt_footer_message.
+
+Expense Management:
+
+Recording of general business operational expenses, with details such as date, selected ExpenseCategory, description, amount, and payment method.
+
+Automatic logging of "Loss on Abandoned Orders" as a specific type of expense (as per FR above).
+
+Association of Expenses paid using the 'Cash' method with the active shift_id of the user recording the expense.
+
+Appointment Management:
+
+Scheduling of patient appointments, primarily for order delivery or follow-up consultations, linked to specific SalesOrders.
+
+Tracking and updating of appointment statuses through a predefined list: 'Scheduled', 'Confirmed', 'Completed' (patient attended), 'Cancelled' (by center or patient), 'No Show' (patient did not attend without prior cancellation), 'Rescheduled'.
+
+Reporting:
+
+Generation of a comprehensive suite of reports, including:
+
+Sales Reports (detailed, with itemization, and summary reports, filterable by date, patient, product category).
+
+Profit and Loss Statement (calculated on a cash-received basis, as detailed in FR12.1 of the SRS).
+
+Expense Reports (filterable by category and period).
+
+Inventory Reports (including current stock valuation at cost, and a low stock report).
+
+Outstanding Payments Report (listing orders with a balance due).
+
+Patient Purchase History Report.
+
+Detailed Shift Reports (as defined in FR3.6 of the SRS).
+
+All reports must be viewable on screen, printable in a well-formatted layout, and exportable to CSV format, with PDF export as a desirable secondary option.
+
+Patient Communication (WhatsApp Click-to-Chat):
+
+User interface elements (e.g., buttons or icons) to allow staff to initiate WhatsApp messages to patients who have given explicit consent (Patients.whatsapp_opt_in = TRUE).
+
+System generation of standard WhatsApp https://wa.me/ links. These links will include the patient's internationally formatted phone number and a pre-filled message constructed from a configurable template (using placeholders for dynamic data like [PatientName], [OrderID], [DateTime], [CenterName]).
+
+The application will open the generated wa.me/ link in the system's default web browser, which will then launch WhatsApp (Web or Desktop client). The staff member must then manually press "Send" within their WhatsApp application.
+
+Admin users will be able to view and edit the default message templates (for different notification contexts like appointment reminders, order ready) via the application settings.
+
+Internationalization & Localization (i18n & l10n):
+
+Full User Interface support for both English and Arabic languages, with Arabic set as the default language.
+
+Dynamic adaptation of the UI layout to support Right-to-Left (RTL) for Arabic and Left-to-Right (LTR) for English.
+
+UTF-8 character encoding for all data handling and storage to ensure correct display of multilingual content.
+
+Audit Logging:
+
+Automatic and comprehensive tracking of critical data modifications (INSERT, UPDATE, DELETE operations on key tables as specified in FR13 of the SRS) in a dedicated AuditLog table.
+
+Each audit log entry will record the table name, primary key of the affected record, old and new values (where applicable, preferably in JSON format), the type of action, a precise timestamp, and the user_id of the user who performed the action.
+
+A dedicated interface for Admin users to view and filter audit logs for review and compliance purposes.
+
+Help & About Sections:
+
+An integrated User Manual / Help section, accessible from the main application menu, providing clear, step-by-step instructions and guidance on using all system features. This content should be available in both English and Arabic.
+
+An "About Basariat POS" section, also accessible from a menu, displaying the application name ("Basariat POS"), current version number, and full developer credit details (Ahmed Mohammed Hamednalla Abdelhafiz, including email and phone numbers), and a copyright notice.
+
+1.4. Not in Scope (Explicit Exclusions from the Current Version):
+
+Automated Messaging: Direct, automated sending of WhatsApp messages via the WhatsApp Business API or any other automated messaging platform (SMS, Email) is explicitly out of scope. Only the manual "Click-to-Chat" initiation for WhatsApp is included.
+
+Hardware Integrations (Direct): Direct software integration with specialized optical diagnostic equipment (e.g., autorefractors, lensometers) or lens edging machines for data import/export is not included. Data from such devices must be manually entered into "Basariat POS".
+
+Third-Party Software Integrations (Direct): Direct, real-time integration with external online supplier ordering systems, third-party accounting software (beyond data export in CSV format), or payment gateways is not part of the current scope.
+
+Advanced CRM Features: Functionalities beyond basic patient information storage, purchase/diagnostic history tracking, and WhatsApp consent management, such as marketing campaign management, detailed customer segmentation analytics, or integrated loyalty programs, are not included.
+
+E-commerce & Online Portals: Any form of e-commerce capability (e.g., online sales of products), online appointment booking by patients themselves, or any web-based patient portal for accessing records or prescriptions is out of scope.
+
+Detailed HR & Payroll: Functionalities related to detailed Human Resources management, such as payroll processing, employee attendance tracking, or leave management, are not included. Salaries can be tracked as a general expense category.
+
+Cloud-Based Architecture & Remote Access: The system is designed as an on-premises, client-server application for individual optical centers. Cloud-based multi-tenancy, remote access to the application or database over the internet (beyond the local LAN), or any web-based version of the application is not in scope.
+
+Complex Multi-User Shift Sharing: The current design for shift management assumes that an active shift is "owned" and reconciled by the single user who started or resumed it. Complex scenarios involving multiple users concurrently contributing to and sharing responsibility for the same single active shift instance and its cash drawer are not within the current scope.
+
+Automatic WhatsApp Account Verification: The system will not automatically verify if a patient's phone number is registered on WhatsApp before generating a Click-to-Chat link.
+
+Built-in Database Backup/Restore Utilities: The "Basariat POS" application itself will not include built-in utilities for performing or scheduling database backups or restores. This responsibility lies with the optical center's IT administration, and the system documentation will strongly recommend best practices for this.
+
+Advanced Tax Calculation Logic: While sales documents will have space for tax information, the system will not initially include complex, region-specific tax calculation logic (e.g., VAT, GST). If taxes are applicable, they would need to be calculated and entered manually or as a fixed percentage if that's a simple enough requirement for the target market.
