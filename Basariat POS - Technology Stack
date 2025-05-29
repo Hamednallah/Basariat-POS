@@ -1,0 +1,76 @@
+Basariat POS - Technology Stack (Final - EN)
+This document outlines the key technologies, frameworks, libraries, and tools that will be utilized in the development, deployment, and operation of the "Basariat POS" system.
+
+Core Programming Language: Java 21 (or the latest Long-Term Support - LTS version available at the commencement of development). This choice provides a robust, object-oriented, platform-independent foundation with a mature and extensive ecosystem of libraries and tools.
+
+User Interface (UI) Framework: JavaFX (version compatible with Java 21, e.g., JavaFX 21 or later, typically managed as separate modules from OpenJFX).
+
+FXML (Extensible Markup Language): Strongly recommended and will be used for defining the structure, layout, and static components of UI views. This promotes a separation of concerns between the visual presentation (the "view") and the application logic (the "controller").
+
+CSS (Cascading Style Sheets): Will be used extensively for styling all JavaFX application components to achieve the defined visual theme (colors, fonts, spacing, component appearances, rounded corners, etc.) and ensure a consistent and professional look and feel.
+
+Database Management System (DBMS): PostgreSQL (a recent stable version, e.g., version 15 or 16, or the latest stable version available at the time of development).
+
+Selected for its open-source nature, advanced SQL features (including robust support for JSONB data types), proven robustness and reliability for transactional workloads, strong data integrity mechanisms, and scalability.
+
+Database Interaction Framework: jOOQ (Java Object Oriented Querying) - (a recent stable version compatible with Java 21 and the chosen PostgreSQL version).
+
+jOOQ will be used for all database interactions from the Java application layer. Its primary benefits include generating type-safe SQL queries from Java code (reducing runtime SQL errors), providing a fluent API for constructing complex queries, simplifying interaction with the database schema in an object-oriented manner, and facilitating the mapping of database results to Java objects. This involves a code generation step based on the live PostgreSQL database schema, which produces Java classes representing tables, records, sequences, stored procedures, and other database objects.
+
+Build Automation Tool: Apache Maven or Gradle (latest stable versions).
+
+(Recommendation: Gradle often provides more flexibility for managing JavaFX modules, native packaging, and complex build configurations. However, Maven is also a viable and widely used option if the development team has greater familiarity with it.)
+
+The chosen build tool will be responsible for managing project dependencies (e.g., jOOQ, PostgreSQL JDBC driver, JavaFX modules if not part of a custom JRE, logging libraries, optional reporting libraries), compiling Java source code, processing resources (like FXML and CSS files), running automated tests, and packaging the application for deployment.
+
+Java Runtime Environment (JRE) / Java Development Kit (JDK): Version 21 (or the specific LTS version used for development). This JDK (for development) and JRE (for deployment) must be installed on all relevant machines. Crucially, the JRE used to run the deployed application must include all necessary JavaFX modules.
+
+jlink (JDK Tool): This tool should be used to create custom, minimal JREs that include only the necessary Java platform modules and the required JavaFX modules, reducing the overall footprint of the deployed application.
+
+Reporting Libraries (Considerations for PDF/Print/Export):
+
+Data Retrieval for Reports: Data for reports will be primarily retrieved using jOOQ queries, which may in turn call database views (e.g., SalesDetailedView, ShiftReportSummaryView) or functions (e.g., GenerateProfitAndLossStatement) defined in the PostgreSQL database to encapsulate complex data aggregation logic.
+
+Report Generation Libraries (Optional, if advanced formatting or direct PDF generation beyond basic JavaFX printing/CSV export is required):
+
+Apache PDFBox: An open-source Java library suitable for programmatically creating and manipulating PDF documents. It offers fine-grained control over PDF content generation, which can be useful for custom report layouts.
+
+JasperReports (with Jaspersoft Studio for report design): A powerful and feature-rich open-source reporting engine. It allows for visual design of complex reports (e.g., using the Jaspersoft Studio IDE) and can generate output in various formats (PDF, HTML, Excel, etc.). While it has a steeper learning curve, it offers extensive capabilities and integrates well with Java applications.
+
+For simpler table-based reports, JavaFX's built-in TableView printing capabilities (if they meet the formatting requirements) or exporting data to CSV format might be sufficient initial steps.
+
+CSV Export Library (Optional, if robust CSV handling is needed): Apache Commons CSV or OpenCSV for easy, reliable, and RFC 4180 compliant CSV file generation from report data or table views.
+
+Integrated Development Environment (IDE):
+
+IntelliJ IDEA (Community or Ultimate Edition - provides excellent Java, JavaFX, Maven/Gradle, and database tooling support).
+
+Eclipse IDE for Java Developers (requires the e(fx)clipse plugin for optimal JavaFX development support).
+
+Visual Studio Code with appropriate Java extensions (e.g., Extension Pack for Java by Microsoft) and JavaFX support extensions.
+
+Version Control System: Git.
+
+All source code (Java, FXML, CSS), SQL scripts, documentation, and other project artifacts will be managed using Git. A central repository (e.g., hosted on GitHub, GitLab, Bitbucket, or a private Git server) will be used for collaboration, version history tracking, and branching.
+
+Operating System (Development & Deployment):
+
+Development Environment: Developers can use their preferred OS: Windows, Linux, or macOS, provided it supports the chosen JDK and IDE.
+
+Deployment Environment (Client & Server):
+
+Client Machines: Primarily Windows Desktop versions (e.g., Windows 10, Windows 11). Due to Java's cross-platform nature and the use of JavaFX, the application should be runnable on Linux Desktop (e.g., Ubuntu, Fedora) and macOS, provided the JRE with JavaFX is correctly installed or bundled. However, primary testing and official support will target Windows environments.
+
+Server Machine (for PostgreSQL): Can be Windows (Desktop/Server editions) or Linux Server (often recommended for dedicated database servers due to performance and stability).
+
+Help Documentation Format:
+
+HTML files: Bundled with the application and displayed using JavaFX's WebView component for an integrated and seamless help experience within the application itself.
+
+PDF document: As an alternative or supplement, a PDF document can be bundled with the application and opened using the system's default PDF viewer.
+
+Application Packaging Tool (Strong Recommendation): jpackage tool (included with the JDK since Java 14).
+
+This tool should be utilized for creating native application bundles (e.g., .exe for Windows with an installer, .msi, .dmg for macOS, .deb/.rpm for Linux). These bundles can encapsulate a custom JRE (created with jlink) and all necessary JavaFX modules, significantly simplifying the distribution and installation process for end-users and ensuring that all runtime dependencies are met.
+
+Logging Framework: SLF4J (Simple Logging Facade for Java) as the logging API, with an underlying robust implementation like Logback or Log4j2. This allows for flexible and configurable application logging for debugging, monitoring, and auditing purposes.
