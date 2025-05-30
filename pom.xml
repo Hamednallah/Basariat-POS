@@ -114,9 +114,9 @@
                 <configuration>
                     <jdbc>
                         <driver>org.postgresql.Driver</driver>
-                        <url>jdbc:postgresql://localhost:5432/optical_center_db</url>
-                        <user>admin_user</user>
-                        <password>admin_password</password>
+                        <url>jdbc:postgresql://localhost:5433/basariat_pos_db</url>
+                        <user>basariat_pos_user</user>
+                        <password>POST</password>
                     </jdbc>
                     <generator>
                         <database>
