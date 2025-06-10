@@ -1,0 +1,81 @@
+/* General Styles */
+.root {
+    -fx-background-color: #FAF8F0; /* Old Lace/Warm Cream */
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif;
+}
+
+/* Label Styles */
+.label {
+    -fx-text-fill: #5D4037; /* Brown Grey */
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif;
+}
+
+/* MenuBar Styles */
+.menu-bar {
+    -fx-background-color: #EFEBE9; /* A lighter shade of brown or cream for the bar */
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif;
+}
+
+.menu-bar .label { /* Target labels within MenuBar, like menu titles */
+    -fx-text-fill: #5D4037;
+}
+
+/* Menu Styles (Dropdown container) */
+.menu {
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif;
+}
+
+.menu .label { /* Target labels within Menu, like menu titles if not covered by menu-bar .label */
+    -fx-text-fill: #5D4037;
+}
+
+/* MenuItem Styles */
+.menu-item {
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif;
+}
+
+.menu-item .label { /* Target labels within MenuItem */
+    -fx-text-fill: #5D4037;
+}
+
+.menu-item:focused {
+    -fx-background-color: #D7CCC8; /* A light hover/focus color */
+}
+
+.menu-item:focused .label {
+    -fx-text-fill: #4E342E; /* Slightly darker text on hover/focus */
+}
+
+/* ContextMenu (often used for dropdowns) Styles */
+.context-menu {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #BDBDBD;
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif;
+}
+
+/* Status Bar Styles */
+/* Assuming the HBox at the bottom is given a style class or ID if more specific styling is needed */
+/* For now, styling its Label child directly if it's the only label type there or use IDs/style classes */
+/* For example, if the HBox has fx:id="statusBar" or styleClass="status-bar" */
+.status-bar .label { /* If HBox has styleClass="status-bar" */
+    -fx-text-fill: #5D4037;
+    -fx-padding: 0 0 0 5px; /* Add some padding to the left */
+}
+
+/* Specific styling for the shift status label if needed */
+#shiftStatusLabel {
+    -fx-font-size: 0.9em;
+    -fx-text-fill: #795548; /* A slightly different shade of brown */
+}
+
+/* Placeholder for content area label */
+/* If the "Welcome to Basariat POS" label needs specific styling */
+/* Give it an fx:id in FXML and then style it here, e.g., #welcomeLabel */
+/* Or if its StackPane parent has an ID: #mainContentContainer .label */
+
+/* Font fallbacks are generally handled by JavaFX, but specifying them is good practice.
+   Actual loading of custom fonts like "Open Sans" and "Tajawal" might require
+   explicit loading in Java code if they are not installed on the system:
+   Font.loadFont(getClass().getResourceAsStream("/path/to/font/OpenSans-Regular.ttf"), 12);
+   Font.loadFont(getClass().getResourceAsStream("/path/to/font/Tajawal-Regular.ttf"), 12);
+*/

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import java.lang.String?>
+
+<BorderPane xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.MainFrameController">
+    <top>
+        <MenuBar BorderPane.alignment="CENTER">
+            <menus>
+                <Menu mnemonicParsing="false" text="%menu.file">
+                    <items>
+                        <Menu mnemonicParsing="false" text="%menu.file.language">
+                            <items>
+                                <MenuItem mnemonicParsing="false" text="%menu.file.language.english" onAction="#handleSwitchToEnglish"/>
+                                <MenuItem mnemonicParsing="false" text="%menu.file.language.arabic" onAction="#handleSwitchToArabic"/>
+                            </items>
+                        </Menu>
+                        <MenuItem mnemonicParsing="false" text="%menu.file.exit" onAction="#handleFileExit" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.edit">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.view">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.patient">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.sales">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.inventory">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.reports">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu mnemonicParsing="false" text="%menu.admin">
+                    <items>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                    </items>
+                </Menu>
+                <Menu fx:id="menuHelp" mnemonicParsing="false" text="%menu.help">
+                    <items>
+                        <MenuItem fx:id="viewUserManualMenuItem" mnemonicParsing="false" text="%menu.help.viewUserManual" onAction="#handleViewUserManual" />
+                        <MenuItem fx:id="menuHelpAbout" mnemonicParsing="false" text="%menu.help.about" onAction="#handleHelpAbout" />
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+    </top>
+    <center>
+        <StackPane BorderPane.alignment="CENTER">
+            <children>
+                <Label fx:id="welcomeLabel" text="%label.welcome" />
+            </children>
+        </StackPane>
+    </center>
+    <bottom>
+        <HBox alignment="CENTER_LEFT" prefHeight="30.0" BorderPane.alignment="CENTER" spacing="5">
+            <children>
+                <Label fx:id="shiftStatusLabel" /> <!-- Text will be set by controller -->
+            </children>
+        </HBox>
+    </bottom>
+    <stylesheets>
+        <!-- Ensure styles.css is correctly referenced relative to this FXML if it's in the same package -->
+        <!-- Or use an absolute path like /com/basariatpos/ui/css/styles.css if it's in a general css folder -->
+        <String fx:value="@styles.css" />
+    </stylesheets>
+</BorderPane>
