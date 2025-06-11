@@ -34,8 +34,9 @@
                         <MenuItem mnemonicParsing="false" text="Placeholder" />
                     </items>
                 </Menu>
-                <Menu mnemonicParsing="false" text="%menu.patient">
+                <Menu fx:id="menuPatient" mnemonicParsing="false" text="%menu.patient">
                     <items>
+                        <MenuItem fx:id="patientManagementMenuItem" mnemonicParsing="false" text="%patientmanagement.title" onAction="#handlePatientManagementAction"/>
                         <MenuItem mnemonicParsing="false" text="Placeholder" />
                     </items>
                 </Menu>

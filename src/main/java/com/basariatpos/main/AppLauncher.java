@@ -30,9 +30,10 @@ public class AppLauncher extends Application {
     private static ApplicationSettingsService applicationSettingsService;
     private static ShiftService shiftService;
     private static UserSessionService userSessionService;
-    private static SalesOrderService salesOrderService; // Added SalesOrderService
-    private static PaymentService paymentService;       // Added PaymentService
-    private static ExpenseService expenseService;       // Added ExpenseService
+    private static SalesOrderService salesOrderService;
+    private static PaymentService paymentService;
+    private static ExpenseService expenseService;
+    private static PatientService patientService; // Added PatientService
 
 
     @Override
@@ -41,20 +42,19 @@ public class AppLauncher extends Application {
         // Initialize services
         com.basariatpos.repository.UserRepository userRepository = new com.basariatpos.repository.UserRepositoryImpl();
         userSessionService = new com.basariatpos.service.UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl());
+        applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl()); // Init this early if others depend on its settings
 
         centerProfileService = new CenterProfileService(new CenterProfileRepositoryImpl());
         userService = new com.basariatpos.service.UserServiceImpl(userRepository);
         bankNameService = new com.basariatpos.service.BankNameServiceImpl(new com.basariatpos.repository.BankNameRepositoryImpl());
         expenseCategoryService = new com.basariatpos.service.ExpenseCategoryServiceImpl(new com.basariatpos.repository.ExpenseCategoryRepositoryImpl());
         productCategoryService = new com.basariatpos.service.ProductCategoryServiceImpl(new com.basariatpos.repository.ProductCategoryRepositoryImpl());
-        applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl());
         shiftService = new com.basariatpos.service.ShiftServiceImpl(new com.basariatpos.repository.ShiftRepositoryImpl(), userRepository);
 
-        // Instantiate new placeholder services
         salesOrderService = new SalesOrderServiceImpl(userSessionService);
         paymentService = new PaymentServiceImpl(userSessionService);
-        // ExpenseServiceImpl constructor needs UserSessionService and later ExpenseRepository
         expenseService = new ExpenseServiceImpl(userSessionService /*, new com.basariatpos.repository.ExpenseRepositoryImpl() */);
+        patientService = new com.basariatpos.service.PatientServiceImpl(new com.basariatpos.repository.PatientRepositoryImpl(), applicationSettingsService, userSessionService); // Added PatientService instantiation
 
         // Set default locale at the very beginning
         LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
@@ -112,6 +112,11 @@ public class AppLauncher extends Application {
 
     public static ExpenseService getExpenseService() {
         return expenseService;
+    }
+
+    // Static getter for PatientService
+    public static PatientService getPatientService() {
+        return patientService;
     }
 
     @Override
