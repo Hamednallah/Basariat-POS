@@ -22,19 +22,96 @@ public class AppLauncher extends Application {
 
     private static final Logger logger = AppLogger.getLogger(AppLauncher.class);
     private static Stage primaryStage;
-    private static CenterProfileService centerProfileService; // For checking if profile is configured
+    private static CenterProfileService centerProfileService;
+    private static UserService userService;
+    private static BankNameService bankNameService;
+    private static ExpenseCategoryService expenseCategoryService;
+    private static ProductCategoryService productCategoryService;
+    private static ApplicationSettingsService applicationSettingsService;
+    private static ShiftService shiftService;
+    private static UserSessionService userSessionService;
+    private static SalesOrderService salesOrderService; // Added SalesOrderService
+    private static PaymentService paymentService;       // Added PaymentService
+    private static ExpenseService expenseService;       // Added ExpenseService
+
 
     @Override
     public void init() throws Exception {
         super.init();
-        // Initialize services that might be needed early
-        // For now, centerProfileService for checking configuration status
-        // In a DI setup, this would be handled by the container.
+        // Initialize services
+        com.basariatpos.repository.UserRepository userRepository = new com.basariatpos.repository.UserRepositoryImpl();
+        userSessionService = new com.basariatpos.service.UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl());
+
         centerProfileService = new CenterProfileService(new CenterProfileRepositoryImpl());
+        userService = new com.basariatpos.service.UserServiceImpl(userRepository);
+        bankNameService = new com.basariatpos.service.BankNameServiceImpl(new com.basariatpos.repository.BankNameRepositoryImpl());
+        expenseCategoryService = new com.basariatpos.service.ExpenseCategoryServiceImpl(new com.basariatpos.repository.ExpenseCategoryRepositoryImpl());
+        productCategoryService = new com.basariatpos.service.ProductCategoryServiceImpl(new com.basariatpos.repository.ProductCategoryRepositoryImpl());
+        applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl());
+        shiftService = new com.basariatpos.service.ShiftServiceImpl(new com.basariatpos.repository.ShiftRepositoryImpl(), userRepository);
+
+        // Instantiate new placeholder services
+        salesOrderService = new SalesOrderServiceImpl(userSessionService);
+        paymentService = new PaymentServiceImpl(userSessionService);
+        // ExpenseServiceImpl constructor needs UserSessionService and later ExpenseRepository
+        expenseService = new ExpenseServiceImpl(userSessionService /*, new com.basariatpos.repository.ExpenseRepositoryImpl() */);
 
         // Set default locale at the very beginning
         LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
         logger.info("Application initializing. Default locale set to: {}", LocaleManager.getCurrentLocale().toLanguageTag());
+    }
+
+    // Static getter for UserService
+    public static UserService getUserService() {
+        return userService;
+    }
+
+    // Static getter for CenterProfileService
+    public static CenterProfileService getCenterProfileService() {
+        return centerProfileService;
+    }
+
+    // Static getter for BankNameService
+    public static BankNameService getBankNameService() {
+        return bankNameService;
+    }
+
+    // Static getter for ExpenseCategoryService
+    public static ExpenseCategoryService getExpenseCategoryService() {
+        return expenseCategoryService;
+    }
+
+    // Static getter for ProductCategoryService
+    public static ProductCategoryService getProductCategoryService() {
+        return productCategoryService;
+    }
+
+    // Static getter for ApplicationSettingsService
+    public static ApplicationSettingsService getApplicationSettingsService() {
+        return applicationSettingsService;
+    }
+
+    // Static getter for ShiftService
+    public static ShiftService getShiftService() {
+        return shiftService;
+    }
+
+    // Static getter for UserSessionService
+    public static UserSessionService getUserSessionService() {
+        return userSessionService;
+    }
+
+    // Static getters for new placeholder services (optional, if needed by other parts immediately)
+    public static SalesOrderService getSalesOrderService() {
+        return salesOrderService;
+    }
+
+    public static PaymentService getPaymentService() {
+        return paymentService;
+    }
+
+    public static ExpenseService getExpenseService() {
+        return expenseService;
     }
 
     @Override
@@ -60,6 +137,27 @@ public class AppLauncher extends Application {
         //    showLoginScreen();
         // }
         showLoginScreen(); // For current task, go directly to login
+    }
+
+    public static void showUserManagementView() throws IOException {
+        FXMLLoader loader = new FXMLLoader(AppLauncher.class.getResource("/com/basariatpos/ui/view/UserManagementView.fxml"));
+        loader.setResources(MessageProvider.getBundle());
+        Parent root = loader.load();
+
+        // If UserManagementController needs UserService, set it here (manual DI)
+        com.basariatpos.ui.controller.UserManagementController controller = loader.getController();
+        controller.setUserService(userService); // Assuming a setter exists
+
+        Stage umStage = new Stage();
+        umStage.initModality(Modality.APPLICATION_MODAL); // Or Modality.NONE if preferred
+        umStage.setTitle(MessageProvider.getString("usermanagement.title"));
+        // Set owner if primaryStage is suitable, or make it independent
+        // umStage.initOwner(primaryStage);
+
+        Scene scene = new Scene(root, 900, 700); // Example size
+        umStage.setScene(scene);
+        umStage.show(); // Or showAndWait() if modal behavior should block main frame interaction
+        logger.info("User Management View displayed.");
     }
 
     public static void showCenterProfileSetupWizard() throws IOException {
@@ -99,8 +197,12 @@ public class AppLauncher extends Application {
 
     public static void showLoginScreen() throws IOException {
         FXMLLoader loader = new FXMLLoader(AppLauncher.class.getResource("/com/basariatpos/ui/view/LoginView.fxml"));
-        loader.setResources(MessageProvider.getBundle()); // Ensure FXML loader uses the right bundle
+        loader.setResources(MessageProvider.getBundle());
         Parent root = loader.load();
+        // If LoginController needs UserSessionService or others, it should also get them from AppLauncher or DI
+        com.basariatpos.ui.controller.LoginController loginController = loader.getController();
+        // loginController.setUserSessionService(userSessionService); // Example if LoginController is refactored for this
+
         Scene scene = new Scene(root);
         primaryStage.setScene(scene);
         primaryStage.setTitle(MessageProvider.getString("app.title.login"));
@@ -110,9 +212,17 @@ public class AppLauncher extends Application {
 
     public static void showMainFrame() throws IOException {
         FXMLLoader loader = new FXMLLoader(AppLauncher.class.getResource("/com/basariatpos/ui/view/MainFrame.fxml"));
-        loader.setResources(MessageProvider.getBundle()); // Ensure FXML loader uses the right bundle
+        loader.setResources(MessageProvider.getBundle());
         Parent root = loader.load();
-        Scene scene = new Scene(root, 1024, 768); // Default size for main app
+
+        // After loading MainFrame, explicitly update its shift status display
+        com.basariatpos.ui.controller.MainFrameController mainFrameController = loader.getController();
+        // Services are injected in MainFrameController's initialize via AppLauncher getters now.
+        // Call updateShiftStatusDisplayAndControls if it's not automatically handled by property listeners yet.
+        // For now, assuming initialize() handles the first call. If login flow needs explicit update:
+        // mainFrameController.updateShiftStatusDisplayAndControls();
+
+        Scene scene = new Scene(root, 1024, 768);
         primaryStage.setScene(scene);
         primaryStage.setTitle(MessageProvider.getString("app.title.main"));
         primaryStage.show();

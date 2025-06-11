@@ -56,7 +56,13 @@
                 </Menu>
                 <Menu mnemonicParsing="false" text="%menu.admin">
                     <items>
-                        <MenuItem mnemonicParsing="false" text="Placeholder" />
+                        <MenuItem fx:id="userManagementMenuItem" mnemonicParsing="false" text="%usermanagement.title" onAction="#handleUserManagementAction"/>
+                        <MenuItem fx:id="editCenterProfileMenuItem" mnemonicParsing="false" text="%centerprofile.editor.title" onAction="#handleEditCenterProfile"/>
+                        <MenuItem fx:id="bankNameManagementMenuItem" mnemonicParsing="false" text="%bankname.management.title" onAction="#handleBankNameManagementAction"/>
+                        <MenuItem fx:id="expenseCategoryManagementMenuItem" mnemonicParsing="false" text="%expensecategory.management.title" onAction="#handleExpenseCategoryManagementAction"/>
+                        <MenuItem fx:id="productCategoryManagementMenuItem" mnemonicParsing="false" text="%productcategory.management.title" onAction="#handleProductCategoryManagementAction"/>
+                        <MenuItem fx:id="appSettingsManagementMenuItem" mnemonicParsing="false" text="%appsettings.management.title" onAction="#handleAppSettingsManagementAction"/>
+                        <MenuItem mnemonicParsing="false" text="Placeholder" /> <!-- Other admin items -->
                     </items>
                 </Menu>
                 <Menu fx:id="menuHelp" mnemonicParsing="false" text="%menu.help">
@@ -76,9 +82,19 @@
         </StackPane>
     </center>
     <bottom>
-        <HBox alignment="CENTER_LEFT" prefHeight="30.0" BorderPane.alignment="CENTER" spacing="5">
+        <HBox alignment="CENTER_LEFT" prefHeight="40.0" spacing="10" BorderPane.alignment="CENTER" styleClass="status-bar">
+            <padding>
+                <Insets left="10.0" right="10.0"/>
+            </padding>
             <children>
-                <Label fx:id="shiftStatusLabel" /> <!-- Text will be set by controller -->
+                <Label fx:id="shiftStatusLabel" styleClass="status-bar-label"/>
+                <HBox HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" spacing="5">
+                    <Button fx:id="startShiftButton" text="%mainframe.button.startShift" onAction="#handleStartShiftAction" styleClass="status-bar-button"/>
+                    <Button fx:id="pauseShiftButton" text="%mainframe.button.pauseShift" onAction="#handlePauseShiftAction" styleClass="status-bar-button" visible="false" managed="false"/>
+                    <Button fx:id="resumeShiftButton" text="%mainframe.button.resumeShift" onAction="#handleResumeShiftAction" styleClass="status-bar-button" visible="false" managed="false"/>
+                    <!-- End Shift button will be added later -->
+                    <!-- <Button fx:id="endShiftButton" text="%mainframe.button.endShift" onAction="#handleEndShiftAction" styleClass="status-bar-button-danger" visible="false" managed="false"/> -->
+                </HBox>
             </children>
         </HBox>
     </bottom>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import java.lang.String?>
+
+<VBox fx:id="startShiftDialogRootPane" alignment="CENTER_LEFT" prefWidth="400.0" spacing="15.0" styleClass="dialog-container" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.StartShiftDialogController">
+    <stylesheets>
+        <String fx:value="@styles.css" />
+    </stylesheets>
+    <padding>
+        <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
+    </padding>
+
+    <Label styleClass="dialog-title" text="%startshiftdialog.title" />
+
+    <GridPane hgap="10" vgap="10">
+        <columnConstraints>
+            <ColumnConstraints halignment="RIGHT" hgrow="NEVER" minWidth="10.0" prefWidth="130.0" />
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="200.0" />
+        </columnConstraints>
+        <rowConstraints>
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+        </rowConstraints>
+
+        <Label text="%startshiftdialog.label.openingFloat" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label-required"/>
+        <TextField fx:id="openingFloatFld" GridPane.columnIndex="1" GridPane.rowIndex="0" styleClass="form-input"/>
+
+    </GridPane>
+
+    <HBox alignment="CENTER_RIGHT" spacing="10.0">
+        <children>
+            <Button fx:id="startButton" onAction="#handleStartButtonAction" text="%startshiftdialog.button.start" styleClass="form-button-primary" defaultButton="true" prefWidth="120"/>
+            <Button fx:id="cancelButton" onAction="#handleCancelButtonAction" text="%usermanagement.button.cancel" styleClass="form-button-secondary" cancelButton="true" prefWidth="100"/> <!-- Reusing common cancel -->
+        </children>
+        <VBox.margin>
+            <Insets top="10.0" />
+        </VBox.margin>
+    </HBox>
+</VBox>
