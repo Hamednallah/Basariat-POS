@@ -132,9 +132,9 @@ class MainFrameControllerTest {
         when(mockCurrentUser.getUserId()).thenReturn(1);
         when(mockCurrentUser.getUsername()).thenReturn("testuser");
         try {
-            when(mockShiftService.getActiveOrPausedShiftForUser(1)).thenReturn(Optional.empty());
+            when(mockShiftService.getIncompleteShiftForUser(1)).thenReturn(Optional.empty()); // Use new method name
         } catch (ShiftException e) {
-            fail("Mock setup failed for getActiveOrPausedShiftForUser", e);
+            fail("Mock setup failed for getIncompleteShiftForUser", e);
         }
 
         controller.updateShiftStatusDisplayAndControls();
@@ -174,7 +174,7 @@ class MainFrameControllerTest {
     @Test
     void shiftControls_userLoggedIn_shiftActive_pauseEnabled(FxRobot robot) throws ShiftException {
         ShiftDTO activeShift = new ShiftDTO(101, 1, "testuser", OffsetDateTime.now(), null, "Active", new BigDecimal("100"));
-        when(mockShiftService.getActiveOrPausedShiftForUser(1)).thenReturn(Optional.of(activeShift));
+        when(mockShiftService.getIncompleteShiftForUser(1)).thenReturn(Optional.of(activeShift));
         controller.updateShiftStatusDisplayAndControls();
 
         assertFalse(robot.lookup("#startShiftButton").queryButton().isVisible());
@@ -187,7 +187,7 @@ class MainFrameControllerTest {
     @Test
     void shiftControls_userLoggedIn_shiftPaused_resumeEnabled(FxRobot robot) throws ShiftException {
         ShiftDTO pausedShift = new ShiftDTO(101, 1, "testuser", OffsetDateTime.now(), null, "Paused", new BigDecimal("100"));
-        when(mockShiftService.getActiveOrPausedShiftForUser(1)).thenReturn(Optional.of(pausedShift));
+        when(mockShiftService.getIncompleteShiftForUser(1)).thenReturn(Optional.of(pausedShift));
         controller.updateShiftStatusDisplayAndControls();
 
         assertFalse(robot.lookup("#startShiftButton").queryButton().isVisible());
@@ -213,8 +213,8 @@ class MainFrameControllerTest {
         verify(mockShiftService).startNewShift(eq(1), eq(new BigDecimal("150.00")));
         verify(mockUserSessionService).setActiveShift(startedShift);
 
-        when(mockShiftService.getActiveOrPausedShiftForUser(1)).thenReturn(Optional.of(startedShift));
-        // controller.updateShiftStatusDisplayAndControls(); // Called in finally block of handler
+        when(mockShiftService.getIncompleteShiftForUser(1)).thenReturn(Optional.of(startedShift));
+        // controller.updateShiftStatusDisplayAndControls(); // Called in finally block of handler in MainFrameController
 
         assertEquals("mock: mainframe.shiftstatus.active P1:102 P2:testuser", robot.lookup("#shiftStatusLabel").queryAs(Label.class).getText());
         assertFalse(robot.lookup("#startShiftButton").queryButton().isVisible());

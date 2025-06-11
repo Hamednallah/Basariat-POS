@@ -17,9 +17,9 @@ public interface ShiftRepository {
      * Finds the currently active or paused shift for a given user.
      * A user should ideally have at most one shift that is not 'Ended'.
      * @param userId The ID of the user.
-     * @return An Optional containing the ShiftDTO if an active or paused shift is found, otherwise empty.
+     * @return An Optional containing the ShiftDTO if an active, paused, or interrupted shift is found, otherwise empty.
      */
-    Optional<ShiftDTO> findActiveOrPausedShiftByUserId(int userId);
+    Optional<ShiftDTO> findIncompleteShiftByUserId(int userId);
 
     /**
      * Starts a new shift for the given user with the specified opening float.
@@ -41,7 +41,7 @@ public interface ShiftRepository {
     void pauseShift(int shiftId, int userId);
 
     /**
-     * Resumes a paused shift.
+     * Resumes a paused or interrupted shift.
      * This typically involves calling a database procedure.
      * @param shiftId The ID of the shift to resume.
      * @param userId The ID of the user resuming the shift (for validation/audit).
@@ -50,13 +50,13 @@ public interface ShiftRepository {
     void resumeShift(int shiftId, int userId);
 
     /**
-     * Ends an active or paused shift.
-     * This will be implemented in a later step.
+     * Ends an active, paused, or interrupted shift.
+     * This involves calling a database procedure.
      * @param shiftId The ID of the shift to end.
-     * @param userId The ID of the user ending the shift.
-     * @param closingFloat The closing cash float amount.
+     * @param endedByUserId The ID of the user ending the shift.
+     * @param closingCashCounted The actual cash counted at the end of the shift.
      * @param notes Optional notes for the shift closing.
      * @throws org.jooq.exception.DataAccessException if the database procedure call fails.
      */
-    // void endShift(int shiftId, int userId, BigDecimal closingFloat, String notes);
+    void endShift(int shiftId, int endedByUserId, BigDecimal closingCashCounted, String notes);
 }

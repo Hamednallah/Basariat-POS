@@ -27,6 +27,8 @@ import javafx.scene.input.KeyCode;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
+// Import for OpticalDiagnosticHistoryDialogController and its service
+import com.basariatpos.service.OpticalDiagnosticService;
 
 import java.io.IOException;
 import java.net.URL;
@@ -53,13 +55,16 @@ public class PatientManagementController implements Initializable {
 
     private PatientService patientService;
     private final ObservableList<PatientDTO> patientObservableList = FXCollections.observableArrayList();
+    private OpticalDiagnosticService opticalDiagnosticService; // Added service
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         this.patientService = AppLauncher.getPatientService();
-        if (this.patientService == null) {
-            logger.error("PatientService is null. Cannot perform operations.");
-            showErrorAlert("Critical Error", "Patient Service is not available.");
+        this.opticalDiagnosticService = AppLauncher.getOpticalDiagnosticService(); // Get the new service
+
+        if (this.patientService == null || this.opticalDiagnosticService == null) {
+            logger.error("PatientService or OpticalDiagnosticService is null. Cannot perform operations.");
+            showErrorAlert("Critical Error", "Required services are not available.");
             // Disable UI elements
             searchField.setDisable(true);
             searchButton.setDisable(true);
@@ -192,9 +197,38 @@ public class PatientManagementController implements Initializable {
     @FXML
     private void handleViewDiagnosticsButtonAction(ActionEvent event) {
         PatientDTO selectedPatient = patientsTable.getSelectionModel().getSelectedItem();
-        if (selectedPatient != null) {
-            logger.info("View Diagnostics button clicked for patient ID: {}. This feature is not yet implemented.", selectedPatient.getSystemPatientId());
-            showInfoAlert("Feature Not Implemented", "Viewing patient diagnostics will be available in a future update.");
+        if (selectedPatient == null) {
+            showErrorAlert("No Patient Selected", "Please select a patient to view diagnostics.");
+            return;
+        }
+
+        if (opticalDiagnosticService == null) {
+            showErrorAlert("Service Error", "Optical Diagnostic Service is not available.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/OpticalDiagnosticHistoryDialog.fxml"));
+            loader.setResources(MessageProvider.getBundle());
+            Parent dialogRoot = loader.load();
+
+            OpticalDiagnosticHistoryDialogController controller = loader.getController();
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(MessageProvider.getString("opticaldiagnostics.history.title", selectedPatient.getFullName()));
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner((Stage) viewDiagnosticsButton.getScene().getWindow());
+            dialogStage.setScene(new Scene(dialogRoot));
+
+            // Initialize the dialog controller with necessary data
+            controller.initializeDialog(this.opticalDiagnosticService, selectedPatient.getPatientId(), selectedPatient.getFullName(), dialogStage);
+
+            dialogStage.showAndWait();
+            // No specific action needed after the history dialog closes, table refresh is handled within it if changes occur.
+
+        } catch (IOException e) {
+            logger.error("Failed to load OpticalDiagnosticHistoryDialog.fxml for patient ID {}: {}", selectedPatient.getPatientId(), e.getMessage(), e);
+            showErrorAlert("UI Error", "Could not open the patient diagnostic history view.");
         }
     }
 

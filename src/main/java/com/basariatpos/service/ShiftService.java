@@ -24,12 +24,12 @@ class ShiftOperationException extends ShiftException {
 public interface ShiftService {
 
     /**
-     * Retrieves the currently active or paused shift for a specific user.
+     * Retrieves the currently active, paused, or interrupted shift for a specific user.
      * @param userId The ID of the user.
      * @return An Optional containing the ShiftDTO if found, otherwise empty.
      * @throws ShiftException if a service-level error occurs.
      */
-    Optional<ShiftDTO> getActiveOrPausedShiftForUser(int userId) throws ShiftException;
+    Optional<ShiftDTO> getIncompleteShiftForUser(int userId) throws ShiftException;
 
     /**
      * Starts a new shift for the specified user.
@@ -63,6 +63,17 @@ public interface ShiftService {
      */
     ShiftDTO resumePausedShift(int shiftId, int userId) throws ShiftNotFoundException, ShiftOperationException, ShiftException;
 
-    // endShift method will be added in a later task for Sprint 1
-    // void endShift(int shiftId, int userId, BigDecimal closingFloat, String notes) throws ShiftNotFoundException, ShiftOperationException, ShiftException;
+    /**
+     * Ends the specified shift.
+     * @param shiftId The ID of the shift to end.
+     * @param endedByUserId The ID of the user performing the action.
+     * @param closingCashCounted The final cash amount counted at the end of the shift.
+     * @param notes Optional notes about the shift closing or discrepancies.
+     * @throws ShiftNotFoundException if the shift to be ended is not found.
+     * @throws ShiftOperationException if the shift cannot be ended (e.g., already ended, or user mismatch if such rule exists).
+     * @throws ValidationException if closingCashCounted is invalid.
+     * @throws ShiftException for other service-level errors.
+     */
+    void endShift(int shiftId, int endedByUserId, BigDecimal closingCashCounted, String notes)
+        throws ShiftNotFoundException, ShiftOperationException, ValidationException, ShiftException;
 }

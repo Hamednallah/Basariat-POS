@@ -33,7 +33,8 @@ public class AppLauncher extends Application {
     private static SalesOrderService salesOrderService;
     private static PaymentService paymentService;
     private static ExpenseService expenseService;
-    private static PatientService patientService; // Added PatientService
+    private static PatientService patientService;
+    private static OpticalDiagnosticService opticalDiagnosticService; // Added OpticalDiagnosticService
 
 
     @Override
@@ -42,7 +43,7 @@ public class AppLauncher extends Application {
         // Initialize services
         com.basariatpos.repository.UserRepository userRepository = new com.basariatpos.repository.UserRepositoryImpl();
         userSessionService = new com.basariatpos.service.UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl());
-        applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl()); // Init this early if others depend on its settings
+        applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl());
 
         centerProfileService = new CenterProfileService(new CenterProfileRepositoryImpl());
         userService = new com.basariatpos.service.UserServiceImpl(userRepository);
@@ -54,7 +55,8 @@ public class AppLauncher extends Application {
         salesOrderService = new SalesOrderServiceImpl(userSessionService);
         paymentService = new PaymentServiceImpl(userSessionService);
         expenseService = new ExpenseServiceImpl(userSessionService /*, new com.basariatpos.repository.ExpenseRepositoryImpl() */);
-        patientService = new com.basariatpos.service.PatientServiceImpl(new com.basariatpos.repository.PatientRepositoryImpl(), applicationSettingsService, userSessionService); // Added PatientService instantiation
+        patientService = new com.basariatpos.service.PatientServiceImpl(new com.basariatpos.repository.PatientRepositoryImpl(), applicationSettingsService, userSessionService);
+        opticalDiagnosticService = new com.basariatpos.service.OpticalDiagnosticServiceImpl(new com.basariatpos.repository.OpticalDiagnosticRepositoryImpl(), userSessionService); // Added OpticalDiagnosticService instantiation
 
         // Set default locale at the very beginning
         LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
@@ -117,6 +119,11 @@ public class AppLauncher extends Application {
     // Static getter for PatientService
     public static PatientService getPatientService() {
         return patientService;
+    }
+
+    // Static getter for OpticalDiagnosticService
+    public static OpticalDiagnosticService getOpticalDiagnosticService() {
+        return opticalDiagnosticService;
     }
 
     @Override
@@ -215,23 +222,33 @@ public class AppLauncher extends Application {
         logger.info("Login screen displayed.");
     }
 
-    public static void showMainFrame() throws IOException {
+    // Overloaded or modified showMainFrame to pass user and potential interrupted shift
+    public static void showMainFrame(com.basariatpos.model.UserDTO authenticatedUser, com.basariatpos.model.ShiftDTO incompleteShift) throws IOException {
         FXMLLoader loader = new FXMLLoader(AppLauncher.class.getResource("/com/basariatpos/ui/view/MainFrame.fxml"));
         loader.setResources(MessageProvider.getBundle());
         Parent root = loader.load();
 
-        // After loading MainFrame, explicitly update its shift status display
         com.basariatpos.ui.controller.MainFrameController mainFrameController = loader.getController();
-        // Services are injected in MainFrameController's initialize via AppLauncher getters now.
-        // Call updateShiftStatusDisplayAndControls if it's not automatically handled by property listeners yet.
-        // For now, assuming initialize() handles the first call. If login flow needs explicit update:
-        // mainFrameController.updateShiftStatusDisplayAndControls();
+        // Services are set in MainFrameController's initialize() via AppLauncher getters.
+        // MainFrameController's initialize() calls updateShiftStatusDisplayAndControls().
+        // If an incomplete shift is passed, call a specific handler in MainFrameController.
+        if (incompleteShift != null) {
+            // Ensure this is called on JavaFX Application thread if there are UI updates immediately
+            Platform.runLater(() -> mainFrameController.handleInterruptedShift(incompleteShift));
+        } else {
+            // If no incomplete shift, ensure shift UI is updated based on current user (which initialize should do)
+            // but if user just logged in and initialize already ran, an explicit update might be needed
+            // if UserSessionService properties are not yet updated and listened to.
+            // For simplicity, assume initialize + updateShiftStatusDisplayAndControls in MainFrameController handles it.
+            // Or, more robustly:
+             Platform.runLater(() -> mainFrameController.updateShiftStatusDisplayAndControls());
+        }
 
         Scene scene = new Scene(root, 1024, 768);
         primaryStage.setScene(scene);
-        primaryStage.setTitle(MessageProvider.getString("app.title.main"));
+        primaryStage.setTitle(MessageProvider.getString("app.title.main") + " - " + authenticatedUser.getFullName());
         primaryStage.show();
-        logger.info("Main application frame displayed.");
+        logger.info("Main application frame displayed for user: {}", authenticatedUser.getUsername());
     }
 
     public static Stage getPrimaryStage() {

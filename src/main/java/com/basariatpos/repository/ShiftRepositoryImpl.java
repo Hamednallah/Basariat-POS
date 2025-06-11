@@ -4,7 +4,7 @@ import com.basariatpos.config.DBManager;
 import com.basariatpos.db.generated.routines.Startshift;
 import com.basariatpos.db.generated.routines.Pauseshift;
 import com.basariatpos.db.generated.routines.Resumeshift;
-// import com.basariatpos.db.generated.routines.Endshift; // For later
+import com.basariatpos.db.generated.routines.Endshift; // Uncommented for endShift
 import com.basariatpos.db.generated.tables.records.ShiftsRecord;
 import com.basariatpos.model.ShiftDTO;
 import com.basariatpos.util.AppLogger;
@@ -51,7 +51,7 @@ public class ShiftRepositoryImpl implements ShiftRepository {
     }
 
     @Override
-    public Optional<ShiftDTO> findActiveOrPausedShiftByUserId(int userId) {
+    public Optional<ShiftDTO> findIncompleteShiftByUserId(int userId) { // Renamed method
         DSLContext dsl = null;
         try {
             dsl = DBManager.getDSLContext();
@@ -62,13 +62,13 @@ public class ShiftRepositoryImpl implements ShiftRepository {
                    .from(SHIFTS)
                    .join(USERS).on(SHIFTS.STARTED_BY_USER_ID.eq(USERS.USER_ID))
                    .where(SHIFTS.STARTED_BY_USER_ID.eq(userId)
-                         .and(SHIFTS.STATUS.in("Active", "Paused")))
-                   .orderBy(SHIFTS.START_TIME.desc()) // Get the most recent one if multiple (should not happen)
+                         .and(SHIFTS.STATUS.in("Active", "Paused", "Interrupted"))) // Added "Interrupted"
+                   .orderBy(SHIFTS.START_TIME.desc())
                    .limit(1)
                    .fetchOne(this::mapRecordToDtoWithUsername)
             );
         } catch (DataAccessException e) {
-            logger.error("Error finding active/paused shift for user ID {}: {}", userId, e.getMessage(), e);
+            logger.error("Error finding incomplete shift for user ID {}: {}", userId, e.getMessage(), e); // Updated log message
             throw e;
         } finally {
             closeContext(dsl);
@@ -174,6 +174,29 @@ public class ShiftRepositoryImpl implements ShiftRepository {
             } catch (Exception e) {
                 logger.warn("Failed to close DSLContext.", e);
             }
+        }
+    }
+
+    @Override
+    public void endShift(int shiftId, int endedByUserId, BigDecimal closingCashCounted, String notes) {
+        DSLContext dsl = null;
+        try {
+            dsl = DBManager.getDSLContext();
+            if (dsl == null) throw new DataAccessException("DSLContext not available");
+
+            Endshift endShiftRoutine = new Endshift();
+            endShiftRoutine.setPShiftId(shiftId);
+            endShiftRoutine.setPEndedByUserId(endedByUserId);
+            endShiftRoutine.setPClosingCashCounted(closingCashCounted);
+            endShiftRoutine.setPNotes(notes);
+
+            endShiftRoutine.execute(dsl.configuration());
+            logger.info("Shift ID {} ended by user ID {}.", shiftId, endedByUserId);
+        } catch (DataAccessException e) {
+            logger.error("Error ending shift ID {}: {}", shiftId, e.getMessage(), e);
+            throw e;
+        } finally {
+            closeContext(dsl);
         }
     }
 }

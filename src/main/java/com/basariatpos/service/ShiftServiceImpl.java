@@ -31,12 +31,12 @@ public class ShiftServiceImpl implements ShiftService {
     }
 
     @Override
-    public Optional<ShiftDTO> getActiveOrPausedShiftForUser(int userId) throws ShiftException {
+    public Optional<ShiftDTO> getIncompleteShiftForUser(int userId) throws ShiftException { // Renamed method
         try {
-            return shiftRepository.findActiveOrPausedShiftByUserId(userId);
+            return shiftRepository.findIncompleteShiftByUserId(userId); // Updated repository call
         } catch (Exception e) {
-            logger.error("Error getting active/paused shift for user ID {}: {}", userId, e.getMessage(), e);
-            throw new ShiftException("Could not retrieve shift status for user.", e);
+            logger.error("Error getting incomplete shift for user ID {}: {}", userId, e.getMessage(), e); // Updated log
+            throw new ShiftException("Could not retrieve incomplete shift status for user.", e);
         }
     }
 
@@ -47,10 +47,10 @@ public class ShiftServiceImpl implements ShiftService {
         }
 
         try {
-            // Check if user already has an active/paused shift
-            Optional<ShiftDTO> existingShift = shiftRepository.findActiveOrPausedShiftByUserId(userId);
+            // Check if user already has an incomplete shift
+            Optional<ShiftDTO> existingShift = shiftRepository.findIncompleteShiftByUserId(userId); // Updated repository call
             if (existingShift.isPresent()) {
-                throw new ShiftOperationException("User ID " + userId + " already has an active or paused shift (ID: " + existingShift.get().getShiftId() + ").");
+                throw new ShiftOperationException("User ID " + userId + " already has an active, paused, or interrupted shift (ID: " + existingShift.get().getShiftId() + ").");
             }
 
             int newShiftId = shiftRepository.startShift(userId, openingFloat);
@@ -115,8 +115,9 @@ public class ShiftServiceImpl implements ShiftService {
             if (shift.getUserId() != userId) {
                 throw new ShiftOperationException("User ID " + userId + " is not authorized to resume shift ID " + shiftId + ".");
             }
-            if (!"Paused".equalsIgnoreCase(shift.getStatus())) {
-                throw new ShiftOperationException("Shift ID " + shiftId + " is not paused, cannot be resumed. Current status: " + shift.getStatus());
+            // Allow resuming from "Paused" or "Interrupted" status
+            if (!("Paused".equalsIgnoreCase(shift.getStatus()) || "Interrupted".equalsIgnoreCase(shift.getStatus()))) {
+                throw new ShiftOperationException("Shift ID " + shiftId + " is not paused or interrupted, cannot be resumed. Current status: " + shift.getStatus());
             }
 
             shiftRepository.resumeShift(shiftId, userId);
@@ -132,6 +133,44 @@ public class ShiftServiceImpl implements ShiftService {
         catch (Exception e) {
             logger.error("Unexpected error resuming shift ID {}: {}", shiftId, e.getMessage(), e);
             throw new ShiftException("Unexpected error while resuming shift.", e);
+        }
+    }
+
+    @Override
+    public void endShift(int shiftId, int endedByUserId, BigDecimal closingCashCounted, String notes)
+        throws ShiftNotFoundException, ShiftOperationException, ValidationException, ShiftException {
+
+        if (closingCashCounted == null || closingCashCounted.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ValidationException("Closing cash counted must be a non-negative value.", List.of("Invalid closing cash amount."));
+        }
+        // Notes can be null or empty, so no primary validation for it unless business rule changes.
+
+        try {
+            ShiftDTO shift = shiftRepository.findById(shiftId)
+                .orElseThrow(() -> new ShiftNotFoundException(shiftId));
+
+            // Basic validation: Ensure the user ending the shift is either the one who started it, or an admin (if roles were checked here)
+            // For now, we allow any user (passed as endedByUserId) to end it, assuming UI/controller handles authorization.
+            // More complex rules (e.g. only shift owner or admin can end) would be here.
+            // if (shift.getUserId() != endedByUserId && !isUserAdmin(endedByUserId)) { // isUserAdmin would check user role
+            //    throw new ShiftOperationException("User ID " + endedByUserId + " is not authorized to end shift ID " + shiftId + ".");
+            // }
+
+            if ("Ended".equalsIgnoreCase(shift.getStatus())) {
+                throw new ShiftOperationException("Shift ID " + shiftId + " has already been ended.");
+            }
+
+            shiftRepository.endShift(shiftId, endedByUserId, closingCashCounted, notes);
+            logger.info("Shift ID {} ended by user ID {}. Closing cash: {}", shiftId, endedByUserId, closingCashCounted);
+
+        } catch (ShiftNotFoundException | ShiftOperationException | ValidationException e) {
+            throw e;
+        } catch (DataAccessException e) {
+            logger.error("Database error ending shift ID {}: {}", shiftId, e.getMessage(), e);
+            throw new ShiftOperationException("Could not end shift due to a database issue.", e);
+        } catch (Exception e) {
+            logger.error("Unexpected error ending shift ID {}: {}", shiftId, e.getMessage(), e);
+            throw new ShiftException("Unexpected error while ending shift.", e);
         }
     }
 }

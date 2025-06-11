@@ -43,22 +43,23 @@ public class LoginController implements Initializable {
 
     private UserService userService;
     private UserSessionService userSessionService;
-    // ResourceBundle is automatically injected if <fx:resources> is used in FXML,
-    // or can be manually loaded via MessageProvider.
+    private ShiftService shiftService; // Added ShiftService
     private ResourceBundle resources;
 
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        this.resources = resources; // Keep a reference if needed, or use MessageProvider.getBundle()
+        this.resources = resources;
 
-        // For Sprint 0, directly instantiate. Later, use DI.
-        this.userService = new MockUserServiceImpl();
-        // UserSessionService might be a singleton or passed from AppLauncher/DI framework
-        // For now, let's assume it can be newed up or obtained if it's a singleton.
-        // This is a simplification for Sprint 0. A real app needs careful UserSessionService lifecycle mgmt.
-        this.userSessionService = new UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl());
+        // Obtain services from AppLauncher (or DI framework in future)
+        this.userService = AppLauncher.getUserService();
+        this.userSessionService = AppLauncher.getUserSessionService();
+        this.shiftService = AppLauncher.getShiftService();
 
+        if (userService == null || userSessionService == null || shiftService == null) {
+            logger.error("One or more critical services not available in LoginController. Login might fail.");
+            // Optionally disable login button or show a general error here
+        }
 
         setupLanguageComboBox();
         errorMessageLabel.setText("");
@@ -111,8 +112,17 @@ public class LoginController implements Initializable {
                 userSessionService.setCurrentUser(userOpt.get());
                 logger.info("User {} logged in successfully. Role: {}", userOpt.get().getUsername(), userOpt.get().getRole());
                 errorMessageLabel.setVisible(false);
-                // Proceed to the main application window
-                AppLauncher.showMainFrame();
+
+                // Check for interrupted shifts
+                UserDTO authenticatedUser = userOpt.get();
+                Optional<ShiftDTO> incompleteShiftOpt = shiftService.getIncompleteShiftForUser(authenticatedUser.getUserId());
+
+                if (incompleteShiftOpt.isPresent()) {
+                    logger.info("Incomplete shift found for user {}. Passing to AppLauncher.", authenticatedUser.getUsername());
+                    AppLauncher.showMainFrame(authenticatedUser, incompleteShiftOpt.get());
+                } else {
+                    AppLauncher.showMainFrame(authenticatedUser, null);
+                }
             } else {
                 showError(MessageProvider.getString("login.error.authenticationFailed"));
                 logger.warn("Authentication failed for username: {}", username);
