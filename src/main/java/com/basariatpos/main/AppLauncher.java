@@ -34,7 +34,10 @@ public class AppLauncher extends Application {
     private static PaymentService paymentService;
     private static ExpenseService expenseService;
     private static PatientService patientService;
-    private static OpticalDiagnosticService opticalDiagnosticService; // Added OpticalDiagnosticService
+    private static OpticalDiagnosticService opticalDiagnosticService;
+    private static ProductService productService;
+    private static InventoryItemService inventoryItemService;
+    private static AuditLogRepository auditLogRepository; // Added AuditLogRepository
 
 
     @Override
@@ -44,19 +47,27 @@ public class AppLauncher extends Application {
         com.basariatpos.repository.UserRepository userRepository = new com.basariatpos.repository.UserRepositoryImpl();
         userSessionService = new com.basariatpos.service.UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl());
         applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl());
+        productCategoryService = new com.basariatpos.service.ProductCategoryServiceImpl(new com.basariatpos.repository.ProductCategoryRepositoryImpl());
+        productService = new com.basariatpos.service.ProductServiceImpl(new com.basariatpos.repository.ProductRepositoryImpl(), productCategoryService);
+        auditLogRepository = new com.basariatpos.repository.AuditLogRepositoryImpl(); // Added AuditLogRepository instantiation
 
         centerProfileService = new CenterProfileService(new CenterProfileRepositoryImpl());
         userService = new com.basariatpos.service.UserServiceImpl(userRepository);
         bankNameService = new com.basariatpos.service.BankNameServiceImpl(new com.basariatpos.repository.BankNameRepositoryImpl());
         expenseCategoryService = new com.basariatpos.service.ExpenseCategoryServiceImpl(new com.basariatpos.repository.ExpenseCategoryRepositoryImpl());
-        productCategoryService = new com.basariatpos.service.ProductCategoryServiceImpl(new com.basariatpos.repository.ProductCategoryRepositoryImpl());
         shiftService = new com.basariatpos.service.ShiftServiceImpl(new com.basariatpos.repository.ShiftRepositoryImpl(), userRepository);
 
         salesOrderService = new SalesOrderServiceImpl(userSessionService);
         paymentService = new PaymentServiceImpl(userSessionService);
         expenseService = new ExpenseServiceImpl(userSessionService /*, new com.basariatpos.repository.ExpenseRepositoryImpl() */);
         patientService = new com.basariatpos.service.PatientServiceImpl(new com.basariatpos.repository.PatientRepositoryImpl(), applicationSettingsService, userSessionService);
-        opticalDiagnosticService = new com.basariatpos.service.OpticalDiagnosticServiceImpl(new com.basariatpos.repository.OpticalDiagnosticRepositoryImpl(), userSessionService); // Added OpticalDiagnosticService instantiation
+        opticalDiagnosticService = new com.basariatpos.service.OpticalDiagnosticServiceImpl(new com.basariatpos.repository.OpticalDiagnosticRepositoryImpl(), userSessionService);
+        inventoryItemService = new com.basariatpos.service.InventoryItemServiceImpl(
+            new com.basariatpos.repository.InventoryItemRepositoryImpl(),
+            productService,
+            auditLogRepository, // Pass AuditLogRepository
+            userSessionService  // Pass UserSessionService
+        );
 
         // Set default locale at the very beginning
         LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
@@ -124,6 +135,21 @@ public class AppLauncher extends Application {
     // Static getter for OpticalDiagnosticService
     public static OpticalDiagnosticService getOpticalDiagnosticService() {
         return opticalDiagnosticService;
+    }
+
+    // Static getter for ProductService
+    public static ProductService getProductService() {
+        return productService;
+    }
+
+    // Static getter for InventoryItemService
+    public static InventoryItemService getInventoryItemService() {
+        return inventoryItemService;
+    }
+
+    // Static getter for AuditLogRepository (optional)
+    public static AuditLogRepository getAuditLogRepository() {
+        return auditLogRepository;
     }
 
     @Override

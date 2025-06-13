@@ -33,46 +33,76 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Locale;
-import java.util.Optional; // For Optional ShiftDTO
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class MainFrameController implements Initializable {
 
     private static final Logger logger = AppLogger.getLogger(MainFrameController.class);
 
-    @FXML
-    private Label shiftStatusLabel;
-    @FXML
-    private Label welcomeLabel;
+    @FXML private Label shiftStatusLabel;
+    @FXML private Label welcomeLabel;
 
     @FXML private MenuBar menuBar;
+    // --- Menu FXML Fields (matching the new FXML) ---
     @FXML private Menu menuFile;
+    @FXML private MenuItem menuItemFileNewPlaceholder;
+    @FXML private MenuItem menuItemFileOpenPlaceholder;
     @FXML private Menu menuFileLanguage;
     @FXML private MenuItem menuItemEnglish;
     @FXML private MenuItem menuItemArabic;
+    @FXML private MenuItem menuItemFileSettings;
     @FXML private MenuItem menuFileExit;
-    @FXML private Menu menuEdit;
-    @FXML private Menu menuView;
-    @FXML private Menu menuPatient;
-    @FXML private Menu menuSales;
-    @FXML private Menu menuInventory;
-    @FXML private Menu menuReports;
-    @FXML private Menu menuAdmin;
-    @FXML private Menu menuHelp;
-    @FXML private MenuItem menuHelpAbout;
-    @FXML private MenuItem viewUserManualMenuItem;
-    @FXML private MenuItem userManagementMenuItem;
-    @FXML private MenuItem editCenterProfileMenuItem;
-    @FXML private MenuItem bankNameManagementMenuItem;
-    @FXML private MenuItem expenseCategoryManagementMenuItem;
-    @FXML private MenuItem productCategoryManagementMenuItem;
-    @FXML private MenuItem appSettingsManagementMenuItem;
 
-    // Shift Control Buttons
+    @FXML private Menu menuEdit;
+    @FXML private MenuItem menuItemEditUndo;
+    @FXML private MenuItem menuItemEditRedo;
+    @FXML private MenuItem menuItemEditCut;
+    @FXML private MenuItem menuItemEditCopy;
+    @FXML private MenuItem menuItemEditPaste;
+
+    @FXML private Menu menuView;
+    @FXML private MenuItem menuItemViewZoomIn;
+    @FXML private MenuItem menuItemViewZoomOut;
+    @FXML private MenuItem menuItemViewResetZoom;
+
+    @FXML private Menu menuPatient;
+    @FXML private MenuItem patientManagementMenuItem; // Existing, retained
+    @FXML private MenuItem menuItemPatientNewOpticalRx;
+
+    @FXML private Menu menuSales;
+    @FXML private MenuItem menuItemSalesNewSale;
+    @FXML private MenuItem menuItemSalesViewSales;
+    @FXML private MenuItem menuItemSalesNewReturn;
+
+    @FXML private Menu menuInventory;
+    @FXML private MenuItem productManagementMenuItem; // Existing, retained
+    @FXML private MenuItem inventoryItemManagementMenuItem; // Existing, retained (was handleInventoryManageStock)
+    @FXML private MenuItem purchaseOrderManagementMenuItem; // Existing, retained
+    @FXML private MenuItem stockAdjustmentMenuItem; // Existing, retained
+
+    @FXML private Menu menuReports;
+    @FXML private MenuItem menuItemReportsSalesReport;
+    @FXML private MenuItem menuItemReportsInventoryReport;
+    @FXML private MenuItem menuItemReportsFinancialReport;
+
+    @FXML private Menu menuAdmin;
+    @FXML private MenuItem userManagementMenuItem; // Existing, retained
+    @FXML private MenuItem editCenterProfileMenuItem; // Existing, retained
+    @FXML private MenuItem appSettingsManagementMenuItem; // Existing, retained
+    @FXML private MenuItem bankNameManagementMenuItem; // Existing, retained
+    @FXML private MenuItem expenseCategoryManagementMenuItem; // Existing, retained
+    @FXML private MenuItem productCategoryManagementMenuItem; // Existing, retained
+    @FXML private MenuItem menuItemAdminDbManagement;
+
+    @FXML private Menu menuHelp;
+    @FXML private MenuItem viewUserManualMenuItem; // Existing, retained
+    @FXML private MenuItem menuHelpAbout; // Existing, retained
+
+    // Shift Control Buttons (existing, retained)
     @FXML private Button startShiftButton;
     @FXML private Button pauseShiftButton;
     @FXML private Button resumeShiftButton;
-    // @FXML private Button endShiftButton; // For later sprint
 
     private ShiftService shiftService;
     private UserSessionService userSessionService;
@@ -103,29 +133,71 @@ public class MainFrameController implements Initializable {
             menuItemEnglish.setText(MessageProvider.getString("menu.file.language.english"));
             menuItemArabic.setText(MessageProvider.getString("menu.file.language.arabic"));
             menuFileExit.setText(MessageProvider.getString("menu.file.exit"));
+
+            // Update texts for new File menu items
+            if(menuItemFileNewPlaceholder != null) menuItemFileNewPlaceholder.setText(MessageProvider.getString("menu.file.newPlaceholder"));
+            if(menuItemFileOpenPlaceholder != null) menuItemFileOpenPlaceholder.setText(MessageProvider.getString("menu.file.openPlaceholder"));
+            if(menuItemFileSettings != null) menuItemFileSettings.setText(MessageProvider.getString("menu.file.settings"));
+
             menuEdit.setText(MessageProvider.getString("menu.edit"));
+            // Update texts for new Edit menu items
+            if(menuItemEditUndo != null) menuItemEditUndo.setText(MessageProvider.getString("menu.edit.undo"));
+            if(menuItemEditRedo != null) menuItemEditRedo.setText(MessageProvider.getString("menu.edit.redo"));
+            if(menuItemEditCut != null) menuItemEditCut.setText(MessageProvider.getString("menu.edit.cut"));
+            if(menuItemEditCopy != null) menuItemEditCopy.setText(MessageProvider.getString("menu.edit.copy"));
+            if(menuItemEditPaste != null) menuItemEditPaste.setText(MessageProvider.getString("menu.edit.paste"));
+
             menuView.setText(MessageProvider.getString("menu.view"));
+            // Update texts for new View menu items
+            if(menuItemViewZoomIn != null) menuItemViewZoomIn.setText(MessageProvider.getString("menu.view.zoomIn"));
+            if(menuItemViewZoomOut != null) menuItemViewZoomOut.setText(MessageProvider.getString("menu.view.zoomOut"));
+            if(menuItemViewResetZoom != null) menuItemViewResetZoom.setText(MessageProvider.getString("menu.view.resetZoom"));
+
             menuPatient.setText(MessageProvider.getString("menu.patient"));
+            if(patientManagementMenuItem != null) patientManagementMenuItem.setText(MessageProvider.getString("menu.patient.manage")); // Adjusted key for consistency
+            if(menuItemPatientNewOpticalRx != null) menuItemPatientNewOpticalRx.setText(MessageProvider.getString("menu.patient.newOpticalRx"));
+
             menuSales.setText(MessageProvider.getString("menu.sales"));
+            if(menuItemSalesNewSale != null) menuItemSalesNewSale.setText(MessageProvider.getString("menu.sales.newSale"));
+            if(menuItemSalesViewSales != null) menuItemSalesViewSales.setText(MessageProvider.getString("menu.sales.viewSales"));
+            if(menuItemSalesNewReturn != null) menuItemSalesNewReturn.setText(MessageProvider.getString("menu.sales.newReturn"));
+
             menuInventory.setText(MessageProvider.getString("menu.inventory"));
+            if(productManagementMenuItem != null) productManagementMenuItem.setText(MessageProvider.getString("menu.inventory.manageProducts")); // Adjusted key
+            if(inventoryItemManagementMenuItem != null) inventoryItemManagementMenuItem.setText(MessageProvider.getString("menu.inventory.manageStock")); // Adjusted key
+            if(purchaseOrderManagementMenuItem != null) purchaseOrderManagementMenuItem.setText(MessageProvider.getString("menu.inventory.purchaseOrders")); // Adjusted key
+            if(stockAdjustmentMenuItem != null) stockAdjustmentMenuItem.setText(MessageProvider.getString("menu.inventory.stockAdjustments")); // Adjusted key
+
             menuReports.setText(MessageProvider.getString("menu.reports"));
+            if(menuItemReportsSalesReport != null) menuItemReportsSalesReport.setText(MessageProvider.getString("menu.reports.salesReport"));
+            if(menuItemReportsInventoryReport != null) menuItemReportsInventoryReport.setText(MessageProvider.getString("menu.reports.inventoryReport"));
+            if(menuItemReportsFinancialReport != null) menuItemReportsFinancialReport.setText(MessageProvider.getString("menu.reports.financialReport"));
+
             menuAdmin.setText(MessageProvider.getString("menu.admin"));
+            if(userManagementMenuItem != null) userManagementMenuItem.setText(MessageProvider.getString("menu.admin.userManagement")); // Adjusted key
+            if(editCenterProfileMenuItem != null) editCenterProfileMenuItem.setText(MessageProvider.getString("menu.admin.centerProfile")); // Adjusted key
+            if(appSettingsManagementMenuItem != null) appSettingsManagementMenuItem.setText(MessageProvider.getString("menu.admin.applicationSettings")); // Adjusted key
+            if(bankNameManagementMenuItem != null) bankNameManagementMenuItem.setText(MessageProvider.getString("bankname.management.title")); // Existing key fine
+            if(expenseCategoryManagementMenuItem != null) expenseCategoryManagementMenuItem.setText(MessageProvider.getString("expensecategory.management.title")); // Existing key fine
+            if(productCategoryManagementMenuItem != null) productCategoryManagementMenuItem.setText(MessageProvider.getString("productcategory.management.title")); // Existing key fine
+            if(menuItemAdminDbManagement != null) menuItemAdminDbManagement.setText(MessageProvider.getString("menu.admin.dbManagement"));
+
             menuHelp.setText(MessageProvider.getString("menu.help"));
-            menuHelpAbout.setText(MessageProvider.getString("menu.help.about"));
-            // Ensure new menu items also get their text updated if not using %key binding fully
             if(viewUserManualMenuItem != null) viewUserManualMenuItem.setText(MessageProvider.getString("menu.help.viewUserManual"));
-            if(userManagementMenuItem != null) userManagementMenuItem.setText(MessageProvider.getString("usermanagement.title"));
-            if(editCenterProfileMenuItem != null) editCenterProfileMenuItem.setText(MessageProvider.getString("centerprofile.editor.title"));
-            if(bankNameManagementMenuItem != null) bankNameManagementMenuItem.setText(MessageProvider.getString("bankname.management.title"));
-            if(expenseCategoryManagementMenuItem != null) expenseCategoryManagementMenuItem.setText(MessageProvider.getString("expensecategory.management.title"));
-            if(productCategoryManagementMenuItem != null) productCategoryManagementMenuItem.setText(MessageProvider.getString("productcategory.management.title"));
-            if(appSettingsManagementMenuItem != null) appSettingsManagementMenuItem.setText(MessageProvider.getString("appsettings.management.title"));
+            if(menuHelpAbout != null) menuHelpAbout.setText(MessageProvider.getString("menu.help.about"));
         }
 
         if (welcomeLabel != null) {
-            welcomeLabel.setText(MessageProvider.getString("label.welcome"));
+            // Original FXML from subtask description used "Welcome to Basariat POS"
+            // The new FXML uses "%label.welcomeToBasariatPOS"
+            welcomeLabel.setText(MessageProvider.getString("label.welcomeToBasariatPOS"));
         }
-        // shiftStatusLabel text is handled by updateShiftStatusDisplayAndControls()
+        if (shiftStatusLabel != null) {
+            // Original FXML from subtask description used "Shift Status: Not Active"
+            // The new FXML uses "%label.shiftStatusNotActive"
+            // This will be updated by updateShiftStatusDisplayAndControls anyway, but for initial text:
+            shiftStatusLabel.setText(MessageProvider.getString("label.shiftStatusNotActive"));
+        }
         logger.debug("Menu texts refreshed for locale: {}", LocaleManager.getCurrentLocale().toLanguageTag());
     }
 
@@ -153,27 +225,34 @@ public class MainFrameController implements Initializable {
         if(startShiftButton != null) startShiftButton.setDisable(false);
 
         try {
-            Optional<ShiftDTO> shiftOpt = shiftService.getActiveOrPausedShiftForUser(currentUser.getUserId());
+            Optional<ShiftDTO> shiftOpt = shiftService.getIncompleteShiftForUser(currentUser.getUserId()); // Changed method name
             if (shiftOpt.isPresent()) {
                 ShiftDTO currentShift = shiftOpt.get();
                 if (userSessionService != null) userSessionService.setActiveShift(currentShift);
 
-                String statusKey = "Active".equalsIgnoreCase(currentShift.getStatus()) ?
-                                   "mainframe.shiftstatus.active" :
-                                   "mainframe.shiftstatus.paused";
+                String statusKey;
+                if ("Active".equalsIgnoreCase(currentShift.getStatus())) {
+                    statusKey = "mainframe.shiftstatus.active";
+                } else if ("Paused".equalsIgnoreCase(currentShift.getStatus())) {
+                    statusKey = "mainframe.shiftstatus.paused";
+                } else { // Interrupted or other
+                    statusKey = "mainframe.shiftstatus.interrupted";
+                }
                 shiftStatusLabel.setText(MessageProvider.getString(statusKey,
                                          String.valueOf(currentShift.getShiftId()),
                                          currentShift.getStartedByUsername() != null ? currentShift.getStartedByUsername() : currentUser.getUsername()));
 
                 boolean isActive = "Active".equalsIgnoreCase(currentShift.getStatus());
+                boolean isPausedOrInterrupted = "Paused".equalsIgnoreCase(currentShift.getStatus()) || "Interrupted".equalsIgnoreCase(currentShift.getStatus());
+
                 startShiftButton.setDisable(true);
                 startShiftButton.setVisible(false); startShiftButton.setManaged(false);
 
                 pauseShiftButton.setDisable(!isActive);
                 pauseShiftButton.setVisible(isActive); pauseShiftButton.setManaged(isActive);
 
-                resumeShiftButton.setDisable(isActive);
-                resumeShiftButton.setVisible(!isActive); resumeShiftButton.setManaged(!isActive);
+                resumeShiftButton.setDisable(!isPausedOrInterrupted);
+                resumeShiftButton.setVisible(isPausedOrInterrupted); resumeShiftButton.setManaged(isPausedOrInterrupted);
 
                 logger.info("Shift status updated: ID {}, Status '{}', User '{}'. Controls adjusted.", currentShift.getShiftId(), currentShift.getStatus(), currentUser.getUsername());
             } else {
@@ -350,6 +429,7 @@ public class MainFrameController implements Initializable {
             Parent viewRoot = loader.load();
             Object loadedController = loader.getController();
 
+            // Service Injection Block - Ensure this is kept up-to-date with all views loaded this way
             if (loadedController instanceof CenterProfileEditorController) {
                 ((CenterProfileEditorController) loadedController).setCenterProfileService(AppLauncher.getCenterProfileService());
             } else if (loadedController instanceof UserManagementController) {
@@ -362,7 +442,22 @@ public class MainFrameController implements Initializable {
                 ((ProductCategoryManagementController) loadedController).setProductCategoryService(AppLauncher.getProductCategoryService());
             } else if (loadedController instanceof AppSettingsManagementController) {
                 ((AppSettingsManagementController) loadedController).setApplicationSettingsService(AppLauncher.getApplicationSettingsService());
-           }
+            } else if (loadedController instanceof PatientManagementController) {
+                PatientManagementController patientCtrl = (PatientManagementController) loadedController;
+                patientCtrl.setPatientService(AppLauncher.getPatientService());
+                patientCtrl.setOpticalDiagnosticService(AppLauncher.getOpticalDiagnosticService());
+            } else if (loadedController instanceof ProductManagementController) {
+                ProductManagementController productCtrl = (ProductManagementController) loadedController;
+                productCtrl.setProductService(AppLauncher.getProductService());
+                productCtrl.setProductCategoryService(AppLauncher.getProductCategoryService());
+            } else if (loadedController instanceof InventoryItemManagementController) { // Added for Inventory Item Management
+                 InventoryItemManagementController invItemCtrl = (InventoryItemManagementController) loadedController;
+                 invItemCtrl.setInventoryItemService(AppLauncher.getInventoryItemService());
+                 invItemCtrl.setProductService(AppLauncher.getProductService()); // For product dropdown
+            } else if (loadedController instanceof PurchaseOrderListController) { // Added for Purchase Order List
+                ((PurchaseOrderListController) loadedController).setPurchaseOrderService(AppLauncher.getPurchaseOrderService());
+            }
+            // End Service Injection Block
 
             if (menuBar.getScene().getRoot() instanceof BorderPane) {
                 BorderPane mainBorderPane = (BorderPane) menuBar.getScene().getRoot();
@@ -395,8 +490,14 @@ public class MainFrameController implements Initializable {
 
     @FXML
     private void handleProductCategoryManagementAction(ActionEvent event) {
-        logger.info("Admin -> Manage Product Categories selected. Loading Product Category Management view...");
+        logger.info("Inventory -> Manage Product Categories selected. Loading Product Category Management view...");
         loadViewIntoCenter("/com/basariatpos/ui/view/ProductCategoryManagementView.fxml", "productcategory.management.title");
+    }
+
+    @FXML
+    private void handleProductManagementAction(ActionEvent event) { // New handler
+        logger.info("Inventory -> Manage Products selected. Loading Product Management view...");
+        loadViewIntoCenter("/com/basariatpos/ui/view/ProductManagementView.fxml", "product.management.title");
     }
 
     @FXML
@@ -405,12 +506,18 @@ public class MainFrameController implements Initializable {
         loadViewIntoCenter("/com/basariatpos/ui/view/AppSettingsManagementView.fxml", "appsettings.management.title");
     }
 
+    @FXML
+    private void handlePatientManagementAction(ActionEvent event) {
+        logger.info("Patient -> Patient Management selected. Loading Patient Management view...");
+        loadViewIntoCenter("/com/basariatpos/ui/view/PatientManagementView.fxml", "patientmanagement.title");
+    }
+
     // --- Shift Action Handlers ---
     @FXML
     private void handleStartShiftAction(ActionEvent event) {
         UserDTO currentUser = userSessionService.getCurrentUser();
         if (currentUser == null) {
-            showGenericErrorAlert("Error", MessageProvider.getString("shift.error.generic")); // More generic or specific "login required"
+            showGenericErrorAlert("Error", MessageProvider.getString("shift.error.generic"));
             return;
         }
         try {
@@ -477,7 +584,7 @@ public class MainFrameController implements Initializable {
 
         Optional<ShiftDTO> shiftToResumeOpt;
         try {
-            shiftToResumeOpt = shiftService.getActiveOrPausedShiftForUser(currentUser.getUserId());
+            shiftToResumeOpt = shiftService.getIncompleteShiftForUser(currentUser.getUserId());
         } catch (ShiftException e) {
             logger.error("Error fetching shift to resume for user {}: {}", currentUser.getUserId(), e.getMessage());
             showGenericErrorAlert("Resume Shift Error", "Could not fetch current shift status: " + e.getMessage());
@@ -485,7 +592,7 @@ public class MainFrameController implements Initializable {
             return;
         }
 
-        if (shiftToResumeOpt.isEmpty() || !"Paused".equalsIgnoreCase(shiftToResumeOpt.get().getStatus())) {
+        if (shiftToResumeOpt.isEmpty() || !("Paused".equalsIgnoreCase(shiftToResumeOpt.get().getStatus()) || "Interrupted".equalsIgnoreCase(shiftToResumeOpt.get().getStatus()))) {
             showGenericErrorAlert("Error", MessageProvider.getString("shift.error.notPausedToResume"));
             return;
         }
@@ -503,6 +610,86 @@ public class MainFrameController implements Initializable {
         }
     }
 
+    public void handleInterruptedShift(ShiftDTO interruptedShift) {
+        logger.info("Handling interrupted shift ID: {}", interruptedShift.getShiftId());
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/InterruptedShiftDialog.fxml"));
+            loader.setResources(MessageProvider.getBundle());
+            Parent dialogRoot = loader.load();
+            InterruptedShiftDialogController dialogController = loader.getController();
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(MessageProvider.getString("interruptedshift.dialog.title"));
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(getStage());
+            dialogStage.setScene(new Scene(dialogRoot));
+
+            dialogController.initializeDialog(interruptedShift, dialogStage);
+            dialogStage.showAndWait();
+
+            InterruptedShiftDialogController.InterruptedShiftAction choice = dialogController.getResult();
+            UserDTO currentUser = userSessionService.getCurrentUser(); // Should still be available
+
+            if (choice == InterruptedShiftDialogController.InterruptedShiftAction.RESUME) {
+                ShiftDTO resumedShift = shiftService.resumePausedShift(interruptedShift.getShiftId(), currentUser.getUserId());
+                userSessionService.setActiveShift(resumedShift);
+                showGenericInfoAlert("Shift Resumed", MessageProvider.getString("shift.success.resumed", String.valueOf(resumedShift.getShiftId())));
+            } else if (choice == InterruptedShiftDialogController.InterruptedShiftAction.FORCIBLY_END) {
+                showEndShiftDialog(interruptedShift, true); // true for forced end
+            } else { // CANCEL or dialog closed
+                logger.info("User chose to decide later or closed interrupted shift dialog. Logging out.");
+                // AppLauncher.showLoginScreen(); // This would be the ideal way to logout
+                Platform.exit(); // For now, simple exit if user cancels handling of interrupted shift
+            }
+        } catch (IOException e) {
+            logger.error("Failed to load InterruptedShiftDialog.fxml: {}", e.getMessage(), e);
+            showGenericErrorAlert("UI Error", "Could not open the interrupted shift dialog.");
+        } catch (ShiftException e) {
+            logger.error("Error handling interrupted shift: {}", e.getMessage(), e);
+            showGenericErrorAlert("Shift Error", e.getMessage());
+        } finally {
+            updateShiftStatusDisplayAndControls();
+        }
+    }
+
+    private void showEndShiftDialog(ShiftDTO shiftToEnd, boolean isForcedEnd) {
+        try {
+            UserDTO currentUser = userSessionService.getCurrentUser();
+            if (currentUser == null) {
+                showGenericErrorAlert("Error", "No user context to end shift."); return;
+            }
+
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/EndShiftDialog.fxml"));
+            loader.setResources(MessageProvider.getBundle());
+            Parent dialogRoot = loader.load();
+            EndShiftDialogController dialogController = loader.getController();
+
+            Stage dialogStage = new Stage();
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(getStage());
+            dialogController.initializeDialog(shiftToEnd, dialogStage, isForcedEnd);
+
+            dialogStage.setScene(new Scene(dialogRoot));
+            dialogStage.showAndWait();
+
+            if (dialogController.isSaved()) {
+                javafx.util.Pair<BigDecimal, String> result = dialogController.getResult();
+                shiftService.endShift(shiftToEnd.getShiftId(), currentUser.getUserId(), result.getKey(), result.getValue());
+                userSessionService.clearActiveShift();
+                showGenericInfoAlert("Shift Ended", MessageProvider.getString("shift.success.ended", String.valueOf(shiftToEnd.getShiftId())));
+            }
+        } catch (IOException e) {
+            logger.error("Failed to load EndShiftDialog.fxml: {}", e.getMessage(), e);
+            showGenericErrorAlert("UI Error", "Could not open the end shift form.");
+        } catch (Exception e) { // Catch Validation, ShiftOperation, ShiftException
+            logger.error("Error ending shift: {}", e.getMessage(), e);
+            showGenericErrorAlert(isForcedEnd ? MessageProvider.getString("endshiftdialog.title.forced") : MessageProvider.getString("endshiftdialog.title"), e.getMessage());
+        } finally {
+            updateShiftStatusDisplayAndControls();
+        }
+    }
+
+
     private void showGenericInfoAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -519,4 +706,163 @@ public class MainFrameController implements Initializable {
         logger.warn("Could not reliably determine the current stage from menuBar.");
         return null;
     }
+
+    // --- Placeholder Handlers for New Menu Items ---
+
+    @FXML
+    private void handleFileNewPlaceholder(ActionEvent event) {
+        logger.info("File -> New Placeholder selected. Action not yet implemented.");
+        // Future: Open a new document/entry, etc.
+    }
+
+    @FXML
+    private void handleFileOpenPlaceholder(ActionEvent event) {
+        logger.info("File -> Open Placeholder selected. Action not yet implemented.");
+        // Future: Show file chooser to open a document
+    }
+
+    @FXML
+    private void handleFileSettings(ActionEvent event) {
+        logger.info("File -> Settings selected. Action not yet implemented.");
+        // Future: Open application settings dialog/view
+    }
+
+    @FXML
+    private void handleEditUndo(ActionEvent event) {
+        logger.info("Edit -> Undo selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleEditRedo(ActionEvent event) {
+        logger.info("Edit -> Redo selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleEditCut(ActionEvent event) {
+        logger.info("Edit -> Cut selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleEditCopy(ActionEvent event) {
+        logger.info("Edit -> Copy selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleEditPaste(ActionEvent event) {
+        logger.info("Edit -> Paste selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleViewZoomIn(ActionEvent event) {
+        logger.info("View -> Zoom In selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleViewZoomOut(ActionEvent event) {
+        logger.info("View -> Zoom Out selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleViewResetZoom(ActionEvent event) {
+        logger.info("View -> Reset Zoom selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handlePatientNewOpticalRx(ActionEvent event) {
+        logger.info("Patient -> New Optical Rx selected. Action not yet implemented.");
+        // Future: Open a form to create a new optical prescription, possibly for the current/selected patient
+    }
+
+    @FXML
+    private void handleSalesNewSale(ActionEvent event) {
+        logger.info("Sales -> New Sale selected. Action not yet implemented.");
+        // Future: Open the main sales transaction interface
+    }
+
+    @FXML
+    private void handleSalesViewSales(ActionEvent event) {
+        logger.info("Sales -> View Sales selected. Action not yet implemented.");
+        // Future: Open a view to browse/search past sales
+    }
+
+    @FXML
+    private void handleSalesNewReturn(ActionEvent event) {
+        logger.info("Sales -> New Return selected. Action not yet implemented.");
+        // Future: Open interface for processing customer returns
+    }
+
+    // handleProductManagementAction is existing and retained
+
+    @FXML
+    private void handleInventoryItemManagementAction(ActionEvent event) {
+        logger.info("Inventory -> Manage Stock (Inventory Items) selected. Loading view...");
+        loadViewIntoCenter("/com/basariatpos/ui/view/InventoryManagementView.fxml", "menu.inventory.manageStock");
+    }
+
+    @FXML
+    private void handlePurchaseOrderManagementAction(ActionEvent event) {
+        logger.info("Inventory -> Purchase Orders selected. Loading view...");
+        loadViewIntoCenter("/com/basariatpos/ui/view/PurchaseOrderListView.fxml", "menu.inventory.purchaseOrders");
+    }
+
+    @FXML
+    private void handleStockAdjustmentAction(ActionEvent event) {
+        logger.info("Inventory -> Stock Adjustments selected. Action not yet implemented / Or loading view if available.");
+        // This was linked to handleInventoryStockAdjustments in the new FXML.
+        // If a dialog exists (as per prior sprints), it should be launched here.
+        // For now, keeping as a placeholder, will be implemented if a stock adjustment dialog is part of the system.
+        // Based on Sprint 2, item 20, a StockAdjustmentDialog.fxml exists.
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/StockAdjustmentDialog.fxml"));
+            loader.setResources(MessageProvider.getBundle());
+            Parent dialogRoot = loader.load();
+            StockAdjustmentDialogController dialogController = loader.getController();
+            // dialogController.setServices(...); // If it needs services directly
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle(MessageProvider.getString("stockadjustment.dialog.title"));
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(getStage());
+            dialogStage.setScene(new Scene(dialogRoot));
+            // dialogController.setDialogStage(dialogStage); // If needed by controller
+
+            dialogStage.showAndWait();
+            // Process result if any
+        } catch (IOException e) {
+            logger.error("Failed to load StockAdjustmentDialog.fxml: {}", e.getMessage(), e);
+            showGenericErrorAlert("UI Error", "Could not open the stock adjustment dialog.");
+        }
+    }
+
+
+    @FXML
+    private void handleReportsSalesReport(ActionEvent event) {
+        logger.info("Reports -> Sales Report selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleReportsInventoryReport(ActionEvent event) {
+        logger.info("Reports -> Inventory Report selected. Action not yet implemented.");
+    }
+
+    @FXML
+    private void handleReportsFinancialReport(ActionEvent event) {
+        logger.info("Reports -> Financial Report selected. Action not yet implemented.");
+    }
+
+    // handleUserManagementAction is existing and retained
+    // handleEditCenterProfile is existing and retained
+    // handleAppSettingsManagementAction is existing and retained
+    // handleBankNameManagementAction is existing and retained
+    // handleExpenseCategoryManagementAction is existing and retained
+    // handleProductCategoryManagementAction is existing and retained
+
+    @FXML
+    private void handleAdminDbManagement(ActionEvent event) {
+        logger.info("Admin -> DB Management selected. Action not yet implemented.");
+        // Future: Open a database management/backup utility or view
+    }
+
+    // handleViewUserManual is existing and retained
+    // handleHelpAbout is existing and retained
 }
