@@ -279,4 +279,28 @@ class InventoryItemServiceImplTest {
             isNull() // Check that userId is null
         );
     }
+
+    // --- processOrderCompletionStockUpdate ---
+    @Test
+    void processOrderCompletionStockUpdate_callsRepositoryToExecuteProcedure() throws Exception {
+        int salesOrderId = 123;
+        doNothing().when(mockItemRepository).executeProcessOrderCompletionStockUpdateProcedure(salesOrderId);
+
+        itemService.processOrderCompletionStockUpdate(salesOrderId);
+
+        verify(mockItemRepository).executeProcessOrderCompletionStockUpdateProcedure(salesOrderId);
+    }
+
+    @Test
+    void processOrderCompletionStockUpdate_repositoryThrowsException_throwsInventoryItemServiceException() throws Exception {
+        int salesOrderId = 123;
+        doThrow(new RuntimeException("DB error")) // Simulate any exception from repository
+            .when(mockItemRepository).executeProcessOrderCompletionStockUpdateProcedure(salesOrderId);
+
+        InventoryItemServiceException ex = assertThrows(InventoryItemServiceException.class, () -> {
+            itemService.processOrderCompletionStockUpdate(salesOrderId);
+        });
+        assertTrue(ex.getMessage().contains("Failed to process stock update for sales order " + salesOrderId));
+        assertEquals("DB error", ex.getCause().getMessage());
+    }
 }

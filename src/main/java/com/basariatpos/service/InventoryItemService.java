@@ -83,4 +83,13 @@ public interface InventoryItemService {
      */
     void performStockAdjustment(int inventoryItemId, int quantityChange, String reason)
         throws InventoryItemNotFoundException, InventoryItemValidationException, InventoryItemServiceException;
+
+    /**
+     * Processes stock level updates after a sales order is marked as 'Completed'.
+     * This typically involves deducting sold quantities from the inventory.
+     * It calls a database procedure that handles the logic of iterating through sales order items.
+     * @param salesOrderId The ID of the completed sales order.
+     * @throws InventoryItemServiceException if an error occurs during the stock update process.
+     */
+    void processOrderCompletionStockUpdate(int salesOrderId) throws InventoryItemServiceException;
 }

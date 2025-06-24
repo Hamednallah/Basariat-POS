@@ -62,7 +62,7 @@
                 <Menu fx:id="menuSales" mnemonicParsing="false" text="%menu.sales">
                     <items>
                         <MenuItem fx:id="menuItemSalesNewSale" mnemonicParsing="false" text="%menu.sales.newSale" onAction="#handleSalesNewSale"/>
-                        <MenuItem fx:id="menuItemSalesViewSales" mnemonicParsing="false" text="%menu.sales.viewSales" onAction="#handleSalesViewSales"/>
+                        <MenuItem fx:id="menuItemSalesOrderList" mnemonicParsing="false" text="%salesorder.list.title" onAction="#handleSalesOrderListAction"/>
                         <MenuItem fx:id="menuItemSalesNewReturn" mnemonicParsing="false" text="%menu.sales.newReturn" onAction="#handleSalesNewReturn"/>
                     </items>
                 </Menu>

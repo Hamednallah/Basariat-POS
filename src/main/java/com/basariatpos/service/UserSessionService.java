@@ -17,18 +17,23 @@ public class UserSessionService {
     private UserDTO currentUser;
     private ShiftDTO activeShift;
     private final SessionRepository sessionRepository;
+    private UserService userService; // Added UserService dependency
 
     /**
-     * Constructs a UserSessionService with the given SessionRepository.
+     * Constructs a UserSessionService with the given SessionRepository and UserService.
      *
-     * @param sessionRepository The repository to use for setting database session context.
-     *                          Cannot be null.
+     * @param sessionRepository The repository to use for setting database session context. Cannot be null.
+     * @param userService The service to use for checking user permissions. Cannot be null.
      */
-    public UserSessionService(SessionRepository sessionRepository) {
+    public UserSessionService(SessionRepository sessionRepository, UserService userService) {
         if (sessionRepository == null) {
             throw new IllegalArgumentException("SessionRepository cannot be null.");
         }
+        if (userService == null) {
+            throw new IllegalArgumentException("UserService cannot be null.");
+        }
         this.sessionRepository = sessionRepository;
+        this.userService = userService; // Initialize UserService
         logger.info("UserSessionService initialized.");
     }
 
@@ -105,5 +110,33 @@ public class UserSessionService {
 
     public boolean isShiftActive() {
         return this.activeShift != null;
+    }
+
+    /**
+     * Checks if the current logged-in user has a specific permission.
+     *
+     * @param permissionKey The permission key string (e.g., "CAN_GIVE_DISCOUNT").
+     * @return true if the user has the permission, false otherwise.
+     */
+    public boolean hasPermission(String permissionKey) {
+        if (currentUser == null) {
+            logger.warn("Permission check for '{}' failed: No current user in session.", permissionKey);
+            return false;
+        }
+        // Assuming "Admin" role has all permissions. This could be more configurable.
+        if ("Admin".equalsIgnoreCase(currentUser.getRole())) {
+            logger.debug("Permission check for '{}': User '{}' is Admin, permission granted.", permissionKey, currentUser.getUsername());
+            return true;
+        }
+        try {
+            boolean hasPerm = userService.doesUserHavePermission(currentUser.getUserId(), permissionKey);
+            logger.debug("Permission check for '{}' for user '{}' (ID: {}): {}",
+                         permissionKey, currentUser.getUsername(), currentUser.getUserId(), hasPerm);
+            return hasPerm;
+        } catch (Exception e) { // Catch potential exceptions from UserService
+            logger.error("Error checking permission '{}' for user ID {}: {}",
+                         permissionKey, currentUser.getUserId(), e.getMessage(), e);
+            return false;
+        }
     }
 }

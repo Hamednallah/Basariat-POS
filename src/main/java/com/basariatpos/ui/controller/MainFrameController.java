@@ -72,7 +72,7 @@ public class MainFrameController implements Initializable {
 
     @FXML private Menu menuSales;
     @FXML private MenuItem menuItemSalesNewSale;
-    @FXML private MenuItem menuItemSalesViewSales;
+    @FXML private MenuItem menuItemSalesOrderList; // Changed from menuItemSalesViewSales
     @FXML private MenuItem menuItemSalesNewReturn;
 
     @FXML private Menu menuInventory;
@@ -159,7 +159,7 @@ public class MainFrameController implements Initializable {
 
             menuSales.setText(MessageProvider.getString("menu.sales"));
             if(menuItemSalesNewSale != null) menuItemSalesNewSale.setText(MessageProvider.getString("menu.sales.newSale"));
-            if(menuItemSalesViewSales != null) menuItemSalesViewSales.setText(MessageProvider.getString("menu.sales.viewSales"));
+            if(menuItemSalesOrderList != null) menuItemSalesOrderList.setText(MessageProvider.getString("salesorder.list.title")); // Updated key
             if(menuItemSalesNewReturn != null) menuItemSalesNewReturn.setText(MessageProvider.getString("menu.sales.newReturn"));
 
             menuInventory.setText(MessageProvider.getString("menu.inventory"));
@@ -454,8 +454,13 @@ public class MainFrameController implements Initializable {
                  InventoryItemManagementController invItemCtrl = (InventoryItemManagementController) loadedController;
                  invItemCtrl.setInventoryItemService(AppLauncher.getInventoryItemService());
                  invItemCtrl.setProductService(AppLauncher.getProductService()); // For product dropdown
-            } else if (loadedController instanceof PurchaseOrderListController) { // Added for Purchase Order List
+            } else if (loadedController instanceof PurchaseOrderListController) {
                 ((PurchaseOrderListController) loadedController).setPurchaseOrderService(AppLauncher.getPurchaseOrderService());
+            } else if (loadedController instanceof SalesOrderListController) { // Added for Sales Order List
+                SalesOrderListController salesCtrl = (SalesOrderListController) loadedController;
+                salesCtrl.setSalesOrderService(AppLauncher.getSalesOrderService());
+                salesCtrl.setCurrentStage((Stage) menuBar.getScene().getWindow()); // Pass the main stage
+                salesCtrl.loadInitialData(); // Load data after service is set
             }
             // End Service Injection Block
 
@@ -780,9 +785,9 @@ public class MainFrameController implements Initializable {
     }
 
     @FXML
-    private void handleSalesViewSales(ActionEvent event) {
-        logger.info("Sales -> View Sales selected. Action not yet implemented.");
-        // Future: Open a view to browse/search past sales
+    private void handleSalesOrderListAction(ActionEvent event) {
+        logger.info("Sales -> Sales Orders selected. Loading Sales Order List view...");
+        loadViewIntoCenter("/com/basariatpos/ui/view/SalesOrderListView.fxml", "salesorder.list.title");
     }
 
     @FXML

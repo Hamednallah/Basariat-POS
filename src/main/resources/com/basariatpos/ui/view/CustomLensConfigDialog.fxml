@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<DialogPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.CustomLensConfigDialogController"
+            prefWidth="650" prefHeight="600" styleClass="dialog-pane-custom">
+    <header>
+        <Label styleClass="dialog-header-title" text="%customlens.dialog.title" />
+    </header>
+    <content>
+        <ScrollPane fitToWidth="true" fitToHeight="true">
+            <VBox spacing="20" styleClass="dialog-content-padding">
+
+                <!-- Patient Prescription Section -->
+                <VBox spacing="10" styleClass="form-section-container">
+                    <Label text="%customlens.label.patientRx" styleClass="form-section-label"/>
+                    <GridPane hgap="10" vgap="8">
+                        <columnConstraints>
+                            <ColumnConstraints halignment="RIGHT" minWidth="60"/> <!-- Labels for OD/OS -->
+                            <ColumnConstraints halignment="LEFT" prefWidth="80" hgrow="SOMETIMES"/> <!-- SPH -->
+                            <ColumnConstraints halignment="LEFT" prefWidth="80" hgrow="SOMETIMES"/> <!-- CYL -->
+                            <ColumnConstraints halignment="LEFT" prefWidth="60" hgrow="SOMETIMES"/> <!-- AXIS -->
+                            <ColumnConstraints halignment="LEFT" prefWidth="80" hgrow="SOMETIMES"/> <!-- ADD -->
+                        </columnConstraints>
+                        <!-- Header Row -->
+                        <Label text="" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <Label text="%opticaldiagnostics.label.sph" styleClass="grid-header" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                        <Label text="%opticaldiagnostics.label.cyl" styleClass="grid-header" GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+                        <Label text="%opticaldiagnostics.label.axis" styleClass="grid-header" GridPane.columnIndex="3" GridPane.rowIndex="0"/>
+                        <Label text="%opticaldiagnostics.label.add" styleClass="grid-header" GridPane.columnIndex="4" GridPane.rowIndex="0"/>
+
+                        <!-- OD Row -->
+                        <Label text="%opticaldiagnostics.label.od" styleClass="grid-row-header" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <TextField fx:id="odSphField" promptText="SPH" styleClass="form-input-numeric" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <TextField fx:id="odCylField" promptText="CYL" styleClass="form-input-numeric" GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+                        <TextField fx:id="odAxisField" promptText="AXIS" styleClass="form-input-numeric" GridPane.columnIndex="3" GridPane.rowIndex="1"/>
+                        <TextField fx:id="odAddField" promptText="ADD" styleClass="form-input-numeric" GridPane.columnIndex="4" GridPane.rowIndex="1"/>
+
+                        <!-- OS Row -->
+                        <Label text="%opticaldiagnostics.label.os" styleClass="grid-row-header" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <TextField fx:id="osSphField" promptText="SPH" styleClass="form-input-numeric" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        <TextField fx:id="osCylField" promptText="CYL" styleClass="form-input-numeric" GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+                        <TextField fx:id="osAxisField" promptText="AXIS" styleClass="form-input-numeric" GridPane.columnIndex="3" GridPane.rowIndex="2"/>
+                        <TextField fx:id="osAddField" promptText="ADD" styleClass="form-input-numeric" GridPane.columnIndex="4" GridPane.rowIndex="2"/>
+
+                        <!-- IPD Row -->
+                        <Label text="%opticaldiagnostics.label.ipd" styleClass="form-label" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                        <TextField fx:id="ipdField" promptText="e.g. 63" styleClass="form-input-numeric" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                    </GridPane>
+                </VBox>
+
+                <Separator/>
+
+                <!-- Lens Attributes Section -->
+                <VBox spacing="10" styleClass="form-section-container">
+                    <Label text="%customlens.label.lensAttributes" styleClass="form-section-label"/>
+                    <GridPane hgap="10" vgap="8">
+                        <columnConstraints>
+                            <ColumnConstraints halignment="RIGHT" prefWidth="150" hgrow="NEVER"/>
+                            <ColumnConstraints prefWidth="300" hgrow="ALWAYS"/>
+                        </columnConstraints>
+                        <Label text="%customlens.label.material" GridPane.columnIndex="0" GridPane.rowIndex="0" styleClass="form-label-required"/>
+                        <ComboBox fx:id="materialComboBox" prefWidth="300" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                        <Label text="%customlens.label.shade" GridPane.columnIndex="0" GridPane.rowIndex="1" styleClass="form-label"/>
+                        <ComboBox fx:id="shadeComboBox" prefWidth="300" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                        <Label text="%customlens.label.reflectionType" GridPane.columnIndex="0" GridPane.rowIndex="2" styleClass="form-label"/>
+                        <ComboBox fx:id="reflectionTypeComboBox" prefWidth="300" styleClass="form-input" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                    </GridPane>
+                </VBox>
+
+                <Separator/>
+
+                <!-- Pricing Section -->
+                 <VBox spacing="10" styleClass="form-section-container">
+                    <Label text="%customlens.label.unitPrice" styleClass="form-label-required"/>
+                    <TextField fx:id="unitPriceField" promptText="0.00" styleClass="form-input-numeric" maxWidth="150"/>
+                </VBox>
+
+            </VBox>
+        </ScrollPane>
+    </content>
+    <buttonTypes>
+        <ButtonType fx:id="okButtonType" text="%dialog.button.ok" buttonData="OK_DONE"/>
+        <ButtonType text="%dialog.button.cancel" buttonData="CANCEL_CLOSE"/>
+    </buttonTypes>
+</DialogPane>

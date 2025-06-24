@@ -30,7 +30,8 @@ public class AppLauncher extends Application {
     private static ApplicationSettingsService applicationSettingsService;
     private static ShiftService shiftService;
     private static UserSessionService userSessionService;
-    private static SalesOrderService salesOrderService;
+    // SalesOrderService already declared
+    private static SalesOrderService salesOrderService; // Retained: Field for SalesOrderService
     private static PaymentService paymentService;
     private static ExpenseService expenseService;
     private static PatientService patientService;
@@ -45,21 +46,24 @@ public class AppLauncher extends Application {
         super.init();
         // Initialize services
         com.basariatpos.repository.UserRepository userRepository = new com.basariatpos.repository.UserRepositoryImpl();
-        userSessionService = new com.basariatpos.service.UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl());
+        // UserService needs to be initialized before UserSessionService
+        userService = new com.basariatpos.service.UserServiceImpl(userRepository);
+        userSessionService = new com.basariatpos.service.UserSessionService(new com.basariatpos.repository.SessionRepositoryImpl(), userService); // Pass userService
         applicationSettingsService = new com.basariatpos.service.ApplicationSettingsServiceImpl(new com.basariatpos.repository.ApplicationSettingsRepositoryImpl());
         productCategoryService = new com.basariatpos.service.ProductCategoryServiceImpl(new com.basariatpos.repository.ProductCategoryRepositoryImpl());
         productService = new com.basariatpos.service.ProductServiceImpl(new com.basariatpos.repository.ProductRepositoryImpl(), productCategoryService);
-        auditLogRepository = new com.basariatpos.repository.AuditLogRepositoryImpl(); // Added AuditLogRepository instantiation
+        auditLogRepository = new com.basariatpos.repository.AuditLogRepositoryImpl();
 
         centerProfileService = new CenterProfileService(new CenterProfileRepositoryImpl());
-        userService = new com.basariatpos.service.UserServiceImpl(userRepository);
+        // userService is already initialized above
         bankNameService = new com.basariatpos.service.BankNameServiceImpl(new com.basariatpos.repository.BankNameRepositoryImpl());
         expenseCategoryService = new com.basariatpos.service.ExpenseCategoryServiceImpl(new com.basariatpos.repository.ExpenseCategoryRepositoryImpl());
         shiftService = new com.basariatpos.service.ShiftServiceImpl(new com.basariatpos.repository.ShiftRepositoryImpl(), userRepository);
 
-        salesOrderService = new SalesOrderServiceImpl(userSessionService);
+        // paymentService and expenseService can be initialized here as they only depend on userSessionService
         paymentService = new PaymentServiceImpl(userSessionService);
-        expenseService = new ExpenseServiceImpl(userSessionService /*, new com.basariatpos.repository.ExpenseRepositoryImpl() */);
+        expenseService = new ExpenseServiceImpl(userSessionService);
+
         patientService = new com.basariatpos.service.PatientServiceImpl(new com.basariatpos.repository.PatientRepositoryImpl(), applicationSettingsService, userSessionService);
         opticalDiagnosticService = new com.basariatpos.service.OpticalDiagnosticServiceImpl(new com.basariatpos.repository.OpticalDiagnosticRepositoryImpl(), userSessionService);
         inventoryItemService = new com.basariatpos.service.InventoryItemServiceImpl(
@@ -67,6 +71,16 @@ public class AppLauncher extends Application {
             productService,
             auditLogRepository, // Pass AuditLogRepository
             userSessionService  // Pass UserSessionService
+        );
+
+        // Now, initialize SalesOrderService as all its dependencies are met
+        com.basariatpos.repository.SalesOrderRepository salesOrderRepositoryInstance = new com.basariatpos.repository.SalesOrderRepositoryImpl();
+        salesOrderService = new com.basariatpos.service.SalesOrderServiceImpl( // This was the line I intended to fix from previous commit
+            salesOrderRepositoryInstance,
+            userSessionService,
+            inventoryItemService,
+            productService,
+            patientService
         );
 
         // Set default locale at the very beginning

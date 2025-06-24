@@ -102,4 +102,11 @@ public interface InventoryItemRepository {
      * @param inventoryItemId The ID of the item to delete.
      */
     // void deleteById(int inventoryItemId); // Optional, if hard delete is needed.
+
+    /**
+     * Executes the database procedure to process stock updates for a completed sales order.
+     * This procedure is expected to iterate through sales order items and deduct quantities from inventory.
+     * @param salesOrderId The ID of the completed sales order.
+     */
+    void executeProcessOrderCompletionStockUpdateProcedure(int salesOrderId);
 }
