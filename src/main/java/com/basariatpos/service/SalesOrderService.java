@@ -129,4 +129,25 @@ public interface SalesOrderService {
      */
     List<SalesOrderDTO> findSalesOrders(LocalDate fromDate, LocalDate toDate, String statusFilter, String patientQuery)
         throws SalesOrderServiceException;
+
+    /**
+     * Abandons a sales order.
+     * This process involves updating the order status, potentially restocking selected items,
+     * and recording any financial loss due to non-restocked items.
+     * Requires an active shift and appropriate user permissions.
+     *
+     * @param salesOrderId The ID of the sales order to be abandoned.
+     * @param salesOrderItemIdsToRestock A list of sales_order_item_ids for items that should be restocked.
+     *                                   Pass an empty list if no items are to be restocked.
+     * @return The updated SalesOrderDTO reflecting the 'Abandoned' status and any other changes.
+     * @throws SalesOrderNotFoundException if the order with the given ID is not found.
+     * @throws SalesOrderValidationException if the order cannot be abandoned due to its current status
+     *                                     or other business rule violations.
+     * @throws PermissionDeniedException if the current user does not have permission to abandon orders.
+     * @throws NoActiveShiftException if there is no active shift for the current user, as the abandonment
+     *                                process might involve financial postings or stock movements that require a shift context.
+     * @throws SalesOrderServiceException for other underlying service or repository errors.
+     */
+    SalesOrderDTO abandonOrder(int salesOrderId, List<Integer> salesOrderItemIdsToRestock)
+        throws SalesOrderNotFoundException, SalesOrderValidationException, PermissionDeniedException, NoActiveShiftException, SalesOrderServiceException;
 }

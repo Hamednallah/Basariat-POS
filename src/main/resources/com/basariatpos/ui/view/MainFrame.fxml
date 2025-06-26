@@ -2,6 +2,7 @@
 
 <?import java.lang.String?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
@@ -11,92 +12,63 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="com.basariatpos.ui.controller.MainFrameController"
-            prefHeight="768.0" prefWidth="1366.0">
+<BorderPane fx:id="mainBorderPane" prefHeight="768.0" prefWidth="1366.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.MainFrameController">
     <stylesheets>
-        <String fx:value="@styles.css"/>
+        <String fx:value="@styles.css" />
     </stylesheets>
     <top>
         <MenuBar fx:id="menuBar" BorderPane.alignment="CENTER">
             <menus>
                 <Menu fx:id="menuFile" mnemonicParsing="false" text="%menu.file">
                     <items>
-                        <MenuItem fx:id="menuItemFileNewPlaceholder" mnemonicParsing="false" text="%menu.file.newPlaceholder" onAction="#handleFileNewPlaceholder"/>
-                        <MenuItem fx:id="menuItemFileOpenPlaceholder" mnemonicParsing="false" text="%menu.file.openPlaceholder" onAction="#handleFileOpenPlaceholder"/>
-                        <SeparatorMenuItem mnemonicParsing="false"/>
-                        <Menu fx:id="menuFileLanguage" mnemonicParsing="false" text="%menu.file.language"> <!-- Keep language switch -->
+                        <Menu fx:id="menuFileLanguage" mnemonicParsing="false" text="%menu.file.language">
                             <items>
-                                <MenuItem fx:id="menuItemEnglish" mnemonicParsing="false" text="%menu.file.language.english" onAction="#handleSwitchToEnglish"/>
-                                <MenuItem fx:id="menuItemArabic" mnemonicParsing="false" text="%menu.file.language.arabic" onAction="#handleSwitchToArabic"/>
+                                <MenuItem fx:id="menuItemEnglish" mnemonicParsing="false" text="%menu.file.language.english" onAction="#handleSwitchToEnglish" />
+                                <MenuItem fx:id="menuItemArabic" mnemonicParsing="false" text="%menu.file.language.arabic" onAction="#handleSwitchToArabic" />
                             </items>
                         </Menu>
-                        <MenuItem fx:id="menuItemFileSettings" mnemonicParsing="false" text="%menu.file.settings" onAction="#handleFileSettings"/>
-                        <SeparatorMenuItem mnemonicParsing="false"/>
-                        <MenuItem fx:id="menuFileExit" mnemonicParsing="false" text="%menu.file.exit" onAction="#handleFileExit"/>
-                    </items>
-                </Menu>
-                <Menu fx:id="menuEdit" mnemonicParsing="false" text="%menu.edit">
-                    <items>
-                        <MenuItem fx:id="menuItemEditUndo" mnemonicParsing="false" text="%menu.edit.undo" onAction="#handleEditUndo"/>
-                        <MenuItem fx:id="menuItemEditRedo" mnemonicParsing="false" text="%menu.edit.redo" onAction="#handleEditRedo"/>
-                        <SeparatorMenuItem mnemonicParsing="false"/>
-                        <MenuItem fx:id="menuItemEditCut" mnemonicParsing="false" text="%menu.edit.cut" onAction="#handleEditCut"/>
-                        <MenuItem fx:id="menuItemEditCopy" mnemonicParsing="false" text="%menu.edit.copy" onAction="#handleEditCopy"/>
-                        <MenuItem fx:id="menuItemEditPaste" mnemonicParsing="false" text="%menu.edit.paste" onAction="#handleEditPaste"/>
-                    </items>
-                </Menu>
-                <Menu fx:id="menuView" mnemonicParsing="false" text="%menu.view">
-                    <items>
-                        <MenuItem fx:id="menuItemViewZoomIn" mnemonicParsing="false" text="%menu.view.zoomIn" onAction="#handleViewZoomIn"/>
-                        <MenuItem fx:id="menuItemViewZoomOut" mnemonicParsing="false" text="%menu.view.zoomOut" onAction="#handleViewZoomOut"/>
-                        <MenuItem fx:id="menuItemViewResetZoom" mnemonicParsing="false" text="%menu.view.resetZoom" onAction="#handleViewResetZoom"/>
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="menuFileExit" mnemonicParsing="false" text="%menu.file.exit" onAction="#handleFileExit" />
                     </items>
                 </Menu>
                 <Menu fx:id="menuPatient" mnemonicParsing="false" text="%menu.patient">
                     <items>
-                        <MenuItem fx:id="patientManagementMenuItem" mnemonicParsing="false" text="%menu.patient.manage" onAction="#handlePatientManagementAction"/>
-                        <MenuItem fx:id="menuItemPatientNewOpticalRx" mnemonicParsing="false" text="%menu.patient.newOpticalRx" onAction="#handlePatientNewOpticalRx"/>
+                        <MenuItem fx:id="patientManagementMenuItem" mnemonicParsing="false" text="%menu.patient.manage" onAction="#handlePatientManagementAction" />
                     </items>
                 </Menu>
                 <Menu fx:id="menuSales" mnemonicParsing="false" text="%menu.sales">
                     <items>
-                        <MenuItem fx:id="menuItemSalesNewSale" mnemonicParsing="false" text="%menu.sales.newSale" onAction="#handleSalesNewSale"/>
-                        <MenuItem fx:id="menuItemSalesOrderList" mnemonicParsing="false" text="%salesorder.list.title" onAction="#handleSalesOrderListAction"/>
-                        <MenuItem fx:id="menuItemSalesNewReturn" mnemonicParsing="false" text="%menu.sales.newReturn" onAction="#handleSalesNewReturn"/>
+                        <MenuItem fx:id="menuItemSalesOrderList" mnemonicParsing="false" text="%salesorder.list.title" onAction="#handleSalesOrderListAction" />
+                        <!-- Placeholder for New Sale if it was a direct menu item -->
+                        <!-- <MenuItem fx:id="menuItemSalesNewSale" mnemonicParsing="false" text="%menu.sales.newSale" onAction="#handleSalesNewSaleAction"/> -->
                     </items>
                 </Menu>
                 <Menu fx:id="menuInventory" mnemonicParsing="false" text="%menu.inventory">
                     <items>
-                        <MenuItem fx:id="productManagementMenuItem" mnemonicParsing="false" text="%menu.inventory.manageProducts" onAction="#handleProductManagementAction"/>
-                        <MenuItem fx:id="inventoryItemManagementMenuItem" mnemonicParsing="false" text="%menu.inventory.manageStock" onAction="#handleInventoryItemManagementAction"/>
-                        <MenuItem fx:id="purchaseOrderManagementMenuItem" mnemonicParsing="false" text="%menu.inventory.purchaseOrders" onAction="#handleInventoryPurchaseOrdersAction"/>
-                        <MenuItem fx:id="stockAdjustmentMenuItem" mnemonicParsing="false" text="%menu.inventory.stockAdjustments" onAction="#handleStockAdjustmentAction"/>
-                    </items>
-                </Menu>
-                <Menu fx:id="menuReports" mnemonicParsing="false" text="%menu.reports">
-                    <items>
-                        <MenuItem fx:id="menuItemReportsSalesReport" mnemonicParsing="false" text="%menu.reports.salesReport" onAction="#handleReportsSalesReport"/>
-                        <MenuItem fx:id="menuItemReportsInventoryReport" mnemonicParsing="false" text="%menu.reports.inventoryReport" onAction="#handleReportsInventoryReport"/>
-                        <MenuItem fx:id="menuItemReportsFinancialReport" mnemonicParsing="false" text="%menu.reports.financialReport" onAction="#handleReportsFinancialReport"/>
+                        <MenuItem fx:id="productManagementMenuItem" mnemonicParsing="false" text="%menu.inventory.manageProducts" onAction="#handleProductManagementAction" />
+                        <MenuItem fx:id="inventoryItemManagementMenuItem" mnemonicParsing="false" text="%menu.inventory.manageStock" onAction="#handleInventoryItemManagementAction" />
+                        <MenuItem fx:id="purchaseOrderManagementMenuItem" mnemonicParsing="false" text="%menu.inventory.purchaseOrders" onAction="#handlePurchaseOrderManagementAction" />
+                        <MenuItem fx:id="stockAdjustmentMenuItem" mnemonicParsing="false" text="%menu.inventory.stockAdjustments" onAction="#handleStockAdjustmentAction" />
                     </items>
                 </Menu>
                 <Menu fx:id="menuAdmin" mnemonicParsing="false" text="%menu.admin">
                     <items>
-                        <MenuItem fx:id="userManagementMenuItem" mnemonicParsing="false" text="%menu.admin.userManagement" onAction="#handleUserManagementAction"/>
-                        <MenuItem fx:id="editCenterProfileMenuItem" mnemonicParsing="false" text="%menu.admin.centerProfile" onAction="#handleEditCenterProfile"/>
-                        <MenuItem fx:id="appSettingsManagementMenuItem" mnemonicParsing="false" text="%menu.admin.applicationSettings" onAction="#handleAppSettingsManagementAction"/>
-                        <!-- Added missing Admin menu items from existing FXML that make sense for a full shell -->
-                        <MenuItem fx:id="bankNameManagementMenuItem" mnemonicParsing="false" text="%bankname.management.title" onAction="#handleBankNameManagementAction"/>
-                        <MenuItem fx:id="expenseCategoryManagementMenuItem" mnemonicParsing="false" text="%expensecategory.management.title" onAction="#handleExpenseCategoryManagementAction"/>
-                        <MenuItem fx:id="productCategoryManagementMenuItem" mnemonicParsing="false" text="%productcategory.management.title" onAction="#handleProductCategoryManagementAction"/>
-                        <MenuItem fx:id="menuItemAdminDbManagement" mnemonicParsing="false" text="%menu.admin.dbManagement" onAction="#handleAdminDbManagement"/>
+                        <MenuItem fx:id="userManagementMenuItem" mnemonicParsing="false" text="%menu.admin.userManagement" onAction="#handleUserManagementAction" />
+                        <MenuItem fx:id="editCenterProfileMenuItem" mnemonicParsing="false" text="%menu.admin.centerProfile" onAction="#handleEditCenterProfileAction" />
+                        <MenuItem fx:id="bankNameManagementMenuItem" mnemonicParsing="false" text="%bankname.management.title" onAction="#handleBankNameManagementAction" />
+                        <MenuItem fx:id="expenseCategoryManagementMenuItem" mnemonicParsing="false" text="%expensecategory.management.title" onAction="#handleExpenseCategoryManagementAction" />
+                        <MenuItem fx:id="manageExpensesMenuItem" mnemonicParsing="false" text="%menu.admin.manageExpenses" onAction="#handleManageExpensesAction" /> <!-- New MenuItem -->
+                        <MenuItem fx:id="productCategoryManagementMenuItem" mnemonicParsing="false" text="%productcategory.management.title" onAction="#handleProductCategoryManagementAction" />
+                        <MenuItem fx:id="appSettingsManagementMenuItem" mnemonicParsing="false" text="%menu.admin.applicationSettings" onAction="#handleAppSettingsManagementAction" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="viewAuditLogsMenuItem" mnemonicParsing="false" text="%menu.admin.viewAuditLogs" onAction="#handleViewAuditLogsAction" />
                     </items>
                 </Menu>
                 <Menu fx:id="menuHelp" mnemonicParsing="false" text="%menu.help">
                     <items>
-                        <MenuItem fx:id="viewUserManualMenuItem" mnemonicParsing="false" text="%menu.help.viewUserManual" onAction="#handleViewUserManual"/>
-                        <MenuItem fx:id="menuHelpAbout" mnemonicParsing="false" text="%menu.help.about" onAction="#handleHelpAbout"/>
+                        <MenuItem fx:id="viewUserManualMenuItem" mnemonicParsing="false" text="%menu.help.viewUserManual" onAction="#handleViewUserManual" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="menuHelpAbout" mnemonicParsing="false" text="%menu.help.about" onAction="#handleHelpAboutAction" />
                     </items>
                 </Menu>
             </menus>
@@ -105,7 +77,7 @@
     <center>
         <StackPane fx:id="mainContentArea" BorderPane.alignment="CENTER">
             <children>
-                <Label fx:id="welcomeLabel" text="%label.welcomeToBasariatPOS"/>
+                <Label fx:id="welcomeLabel" text="%label.welcomeToBasariatPOS" />
             </children>
         </StackPane>
     </center>
@@ -115,13 +87,13 @@
                 <Insets bottom="5.0" left="10.0" right="10.0" top="5.0" />
             </padding>
             <children>
-                <Label fx:id="shiftStatusLabel" styleClass="status-bar-label" text="%label.shiftStatusNotActive"/>
-                <!-- Removed current user and date/time label to match simpler subtask spec for status bar -->
-                <!-- Kept shift buttons from existing FXML as they are important part of current app state -->
-                <HBox HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" spacing="5">
-                    <Button fx:id="startShiftButton" text="%mainframe.button.startShift" onAction="#handleStartShiftAction" styleClass="status-bar-button"/>
-                    <Button fx:id="pauseShiftButton" text="%mainframe.button.pauseShift" onAction="#handlePauseShiftAction" styleClass="status-bar-button" visible="false" managed="false"/>
-                    <Button fx:id="resumeShiftButton" text="%mainframe.button.resumeShift" onAction="#handleResumeShiftAction" styleClass="status-bar-button" visible="false" managed="false"/>
+                <Label fx:id="shiftStatusLabel" styleClass="status-bar-label" text="%label.shiftStatusNotActive" />
+                <HBox HBox.hgrow="ALWAYS" alignment="CENTER_RIGHT" spacing="5.0">
+                    <children>
+                        <Button fx:id="startShiftButton" mnemonicParsing="false" onAction="#handleStartShiftAction" styleClass="status-bar-button" text="%mainframe.button.startShift" />
+                        <Button fx:id="pauseShiftButton" mnemonicParsing="false" onAction="#handlePauseShiftAction" styleClass="status-bar-button" text="%mainframe.button.pauseShift" visible="false" />
+                        <Button fx:id="resumeShiftButton" mnemonicParsing="false" onAction="#handleResumeShiftAction" styleClass="status-bar-button" text="%mainframe.button.resumeShift" visible="false" />
+                    </children>
                 </HBox>
             </children>
         </HBox>

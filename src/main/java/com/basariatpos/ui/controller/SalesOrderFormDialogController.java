@@ -68,7 +68,9 @@ public class SalesOrderFormDialogController implements Initializable {
     @FXML private Label totalAmountLabel;
     @FXML private TextField amountPaidField;
     @FXML private Label balanceDueLabel;
-    @FXML private Button notifyOrderReadyButton; // Added
+    @FXML private Button notifyOrderReadyButton;
+    @FXML private Button recordPaymentButton; // Added
+    @FXML private Button abandonOrderButton; // Added for Abandon Order
     @FXML private Button saveOrderButton;
     @FXML private Button cancelButton;
 
@@ -214,7 +216,23 @@ public class SalesOrderFormDialogController implements Initializable {
         }
 
         updateNotifyButtonState();
+        updateRecordPaymentButtonState();
+        updateAbandonOrderButtonState(); // Call to update new button state
         recalculateTotals();
+    }
+
+    private void updateAbandonOrderButtonState() {
+        boolean canAbandon = false;
+        if (userSessionService != null && currentOrder != null && currentOrder.getSalesOrderId() > 0 &&
+            !Arrays.asList("Completed", "Cancelled", "Abandoned").contains(currentOrder.getStatus()) &&
+            userSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")) {
+            canAbandon = true;
+        }
+        if (abandonOrderButton != null) {
+            abandonOrderButton.setVisible(canAbandon);
+            abandonOrderButton.setManaged(canAbandon); // Ensure it doesn't take space if not visible
+            abandonOrderButton.setDisable(!canAbandon);
+        }
     }
 
     private void updateNotifyButtonState() {
@@ -555,8 +573,10 @@ public class SalesOrderFormDialogController implements Initializable {
                 saved = true;
                  AlertUtil.showSuccess("Order Saved", MessageProvider.getString("salesorder.success.saved", String.valueOf(savedOrder.getSalesOrderId())));
                 updateNotifyButtonState();
-                if (!"Ready for Pickup".equalsIgnoreCase(currentOrder.getStatus())) { // Don't close if ready, so user can notify
+                if (!"Ready for Pickup".equalsIgnoreCase(currentOrder.getStatus())) {
                      closeDialog();
+                } else { // If status is "Ready for Pickup", ensure button state is updated after save
+                    updateNotifyButtonState();
                 }
             } else {
                 AlertUtil.showError("Save Error", "Failed to save or retrieve the order after saving.");
@@ -567,13 +587,14 @@ public class SalesOrderFormDialogController implements Initializable {
             logger.error("Error saving sales order: {}", e.getMessage(), e);
             AlertUtil.showError("Save Failed", MessageProvider.getString("salesorder.error.saveFailed") + "\n" + e.getMessage());
         }
+        updateRecordPaymentButtonState(); // Update after save
     }
 
     @FXML
     void handleNotifyOrderReadyButtonAction(ActionEvent event) {
         if (currentOrder == null || currentOrder.getPatientId() == null ) {
              AlertUtil.showError(MessageProvider.getString("salesorder.notify.confirmation.title"),
-                                MessageProvider.getString("salesorder.notify.error.noConsentOrPhone"));
+                                MessageProvider.getString("salesorder.notify.error.noConsentOrPhone")); // More specific error might be good
             return;
         }
         updateNotifyButtonState(); // Re-check and refresh patient details in currentOrder DTO
@@ -627,6 +648,148 @@ public class SalesOrderFormDialogController implements Initializable {
             AlertUtil.showError(MessageProvider.getString("salesorder.notify.confirmation.title"),
                                 MessageProvider.getString("salesorder.notify.error.browserOpenFailed", e.getMessage()));
         }
+    }
+
+    @FXML
+    void handleRecordPaymentButtonAction(ActionEvent event) {
+        if (currentOrder == null || currentOrder.getSalesOrderId() == 0) {
+            AlertUtil.showWarning("No Order", "Please save the order before recording a payment.");
+            return;
+        }
+        if (currentOrder.getBalanceDue() == null || currentOrder.getBalanceDue().compareTo(BigDecimal.ZERO) <= 0) {
+            AlertUtil.showInfo("Payment Not Needed", "Order balance is already zero or less.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/PaymentDialog.fxml"));
+            loader.setResources(MessageProvider.getBundle());
+            DialogPane dialogPane = loader.load();
+
+            PaymentDialogController paymentController = loader.getController();
+
+            Stage paymentDialogStage = new Stage();
+            paymentDialogStage.setTitle(MessageProvider.getString("payment.dialog.title", String.valueOf(currentOrder.getSalesOrderId())));
+            paymentDialogStage.initModality(Modality.WINDOW_MODAL);
+            paymentDialogStage.initOwner(this.dialogStage);
+
+            paymentController.initializeDialog(currentOrder,
+                com.basariatpos.main.AppLauncher.getPaymentService(),
+                com.basariatpos.main.AppLauncher.getBankNameService(),
+                paymentDialogStage
+            );
+
+            Scene scene = new Scene(dialogPane);
+            paymentDialogStage.setScene(scene);
+            paymentDialogStage.showAndWait();
+
+            if (paymentController.getResultPayment() != null) {
+                // Refresh the current order details to reflect the payment
+                Optional<SalesOrderDTO> updatedOrderOpt = salesOrderService.getSalesOrderDetails(currentOrder.getSalesOrderId());
+                if (updatedOrderOpt.isPresent()) {
+                    this.currentOrder = updatedOrderOpt.get();
+                    // Re-populate relevant fields from the updated order
+                    amountPaidField.setText(this.currentOrder.getAmountPaid().toPlainString());
+                    recalculateTotals(); // This will also update balanceDueLabel
+                    updateRecordPaymentButtonState(); // Update button state based on new balance
+                    updateNotifyButtonState(); // Status might change if fully paid and auto-completes
+                } else {
+                    AlertUtil.showError("Error", "Could not refresh order details after payment.");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Failed to open or process payment dialog for order ID {}: {}", currentOrder.getSalesOrderId(), e.getMessage(), e);
+            AlertUtil.showError("Payment Error", "Could not process payment: " + e.getMessage());
+        }
+    }
+
+    private void updateRecordPaymentButtonState() {
+        boolean canPay = false;
+        if (currentOrder != null && currentOrder.getSalesOrderId() > 0 && currentOrder.getBalanceDue() != null &&
+            currentOrder.getBalanceDue().compareTo(BigDecimal.ZERO) > 0) {
+            // Enable only if order is saved and has a balance due
+            canPay = true;
+        }
+        if(recordPaymentButton != null) { // Ensure FXML has been injected
+            recordPaymentButton.setDisable(!canPay);
+        }
+    }
+
+    @FXML
+    void handleAbandonOrderButtonAction(ActionEvent event) {
+        if (currentOrder == null || currentOrder.getSalesOrderId() == 0) {
+            AlertUtil.showWarning("No Order Selected", "Cannot abandon an unsaved or unspecified order.");
+            return;
+        }
+
+        if (Arrays.asList("Completed", "Cancelled", "Abandoned").contains(currentOrder.getStatus())) {
+             AlertUtil.showInfo("Invalid Status", MessageProvider.getString("abandonorder.error.statusNotAllowed", currentOrder.getStatus()));
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/AbandonOrderDialog.fxml"));
+            loader.setResources(MessageProvider.getBundle());
+            Parent dialogRoot = loader.load();
+
+            AbandonOrderDialogController controller = loader.getController();
+
+            Stage abandonDialogStage = new Stage();
+            abandonDialogStage.setTitle(MessageProvider.getString("abandonorder.dialog.title", String.valueOf(currentOrder.getSalesOrderId())));
+            abandonDialogStage.initModality(Modality.WINDOW_MODAL);
+            abandonDialogStage.initOwner(this.dialogStage);
+
+            controller.initializeDialog(this.currentOrder, this.salesOrderService, abandonDialogStage);
+
+            Scene scene = new Scene(dialogRoot);
+            abandonDialogStage.setScene(scene);
+            abandonDialogStage.showAndWait();
+
+            if (controller.isAbandonConfirmed()) {
+                // Refresh the current order from the database
+                Optional<SalesOrderDTO> updatedOrderOpt = salesOrderService.getSalesOrderDetails(this.currentOrder.getSalesOrderId());
+                if (updatedOrderOpt.isPresent()) {
+                    this.currentOrder = updatedOrderOpt.get();
+                    // Re-populate relevant fields from the updated order
+                    statusComboBox.setValue(this.currentOrder.getStatus());
+                    // Disable editing fields if order is now in a terminal state
+                    if (Arrays.asList("Abandoned", "Cancelled", "Completed").contains(this.currentOrder.getStatus())) {
+                        setFormToReadOnly();
+                    }
+                    recalculateTotals(); // Update financial summary
+                    updateAbandonOrderButtonState(); // Should become disabled
+                    updateRecordPaymentButtonState(); // Might change if status affects payment
+                    updateNotifyButtonState(); // Might change
+                    AlertUtil.showInfo("Order Status Updated", "Order SO-" + this.currentOrder.getSalesOrderId() + " is now " + this.currentOrder.getStatus());
+                } else {
+                    AlertUtil.showError("Error", "Could not refresh order details after abandonment. Please close and reopen the order.");
+                    closeDialog(); // Close form if order is gone
+                }
+            }
+        } catch (IOException e) {
+            logger.error("Failed to load AbandonOrderDialog.fxml: {}", e.getMessage(), e);
+            AlertUtil.showError("UI Error", "Could not open the abandon order dialog: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error during abandon order process for SO-{}: {}", currentOrder.getSalesOrderId(), e.getMessage(), e);
+            AlertUtil.showError("Process Error", "An unexpected error occurred: " + e.getMessage());
+        }
+    }
+
+    private void setFormToReadOnly() {
+        // Disable editing of most fields
+        patientDisplayField.setEditable(false);
+        findPatientButton.setDisable(true);
+        orderDateField.setEditable(false);
+        // statusComboBox.setDisable(true); // Keep status visible, but maybe not changeable from here after terminal state
+        remarksArea.setEditable(false);
+        salesOrderItemsTable.setEditable(false);
+        addItemButton.setDisable(true);
+        removeItemButton.setDisable(true);
+        configureLensButton.setDisable(true);
+        discountField.setEditable(false);
+        // amountPaidField.setEditable(false); // Payments might still be possible for refunds or adjustments on specific setups
+        saveOrderButton.setDisable(true);
+        // recordPaymentButton might also need disabling if no balance or terminal state
     }
 
     @FXML

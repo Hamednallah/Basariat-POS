@@ -1,42 +1,47 @@
 package com.basariatpos.service;
 
-// import com.basariatpos.model.PaymentDTO; // Future DTO
-// import java.math.BigDecimal;
+import com.basariatpos.model.PaymentDTO;
+import com.basariatpos.service.exception.NoActiveShiftException;
+import com.basariatpos.service.exception.PaymentException;
+import com.basariatpos.service.exception.PaymentValidationException;
+import com.basariatpos.service.exception.SalesOrderNotFoundException;
+// Consider adding a SalesOrderUpdateException if the procedure can signal specific update failures on SalesOrder
+// For now, PaymentException can cover general issues.
 
-/**
- * Service interface for managing payments.
- * Methods will be defined in later sprints.
- */
+import java.util.List;
+
 public interface PaymentService {
 
     /**
      * Records a payment for a sales order.
-     * This is a placeholder method signature.
      *
-     * @param orderId The ID of the sales order for which payment is being made.
-     * @param amount The amount of the payment.
-     * @param paymentMethod E.g., "Cash", "Card", "Mobile Money".
-     * @param paymentReference Optional reference for the payment (e.g., transaction ID for card payments).
-     * @return The created PaymentDTO.
-     * @throws com.basariatpos.service.exception.NoActiveShiftException if no shift is active for the current user (especially for cash payments).
-     * @throws ValidationException if payment data is invalid.
-     * @throws SalesOrderNotFoundException if the orderId is invalid.
-     * @throws PaymentException for other payment related errors.
+     * @param paymentDto The DTO containing payment details.
+     * @return The recorded PaymentDTO, updated with generated ID and potentially other fields from DB.
+     * @throws PaymentValidationException if payment data is invalid (e.g., amount, method, bank details).
+     * @throws NoActiveShiftException if no shift is active for the current user (especially for cash).
+     * @throws SalesOrderNotFoundException if the associated sales order is not found.
+     * @throws PaymentException for other payment processing errors or issues updating the sales order.
      */
-    // PaymentDTO recordPayment(int orderId, BigDecimal amount, String paymentMethod, String paymentReference)
-    //    throws com.basariatpos.service.exception.NoActiveShiftException, ValidationException, SalesOrderNotFoundException, PaymentException;
+    PaymentDTO recordPayment(PaymentDTO paymentDto)
+        throws PaymentValidationException, NoActiveShiftException, SalesOrderNotFoundException, PaymentException;
 
-    // Other methods like:
-    // Optional<PaymentDTO> getPaymentById(int paymentId);
-    // List<PaymentDTO> findPaymentsByOrderId(int orderId);
-    // void refundPayment(int paymentId, BigDecimal refundAmount);
+    /**
+     * Retrieves all payments recorded for a specific sales order.
+     *
+     * @param salesOrderId The ID of the sales order.
+     * @return A list of PaymentDTOs.
+     * @throws SalesOrderNotFoundException if the sales order itself is not found (optional, could also return empty list).
+     * @throws PaymentException for other data access errors.
+     */
+    List<PaymentDTO> getPaymentsForOrder(int salesOrderId)
+        throws SalesOrderNotFoundException, PaymentException;
+
+    /**
+     * Retrieves a specific payment by its ID.
+     *
+     * @param paymentId The ID of the payment.
+     * @return An Optional containing the PaymentDTO if found.
+     * @throws PaymentException for data access errors.
+     */
+    Optional<PaymentDTO> getPaymentById(int paymentId) throws PaymentException;
 }
-
-// Placeholder for custom exceptions related to Payment if needed later
-// class PaymentException extends RuntimeException {
-//     public PaymentException(String message) { super(message); }
-//     public PaymentException(String message, Throwable cause) { super(message, cause); }
-// }
-// class SalesOrderNotFoundException extends PaymentException { // Or make it a general exception
-//    public SalesOrderNotFoundException(String message) { super(message); }
-//}

@@ -424,4 +424,45 @@ public class SalesOrderRepositoryImpl implements SalesOrderRepository {
             }
         }
     }
+
+    @Override
+    public void callProcessAbandonedOrderProcedure(int salesOrderId, int abandonedByUserId, List<Integer> salesOrderItemIdsToRestock) throws RepositoryException {
+        DSLContext dsl = null;
+        try {
+            dsl = DBManager.getDSLContext();
+            if (dsl == null) {
+                throw new RepositoryException("DSLContext not available");
+            }
+
+            com.basariatpos.db.generated.routines.Processabandonedorder routine =
+                new com.basariatpos.db.generated.routines.Processabandonedorder();
+
+            routine.setPSalesOrderId(salesOrderId);
+            routine.setPAbandonedByUserId(abandonedByUserId);
+
+            // Convert List<Integer> to Integer[] for jOOQ array parameter
+            // Some jOOQ versions/configurations might directly support List<Integer>
+            // If not, Integer[] is generally safe.
+            if (salesOrderItemIdsToRestock != null) {
+                routine.setPRestockItemIds(salesOrderItemIdsToRestock.toArray(new Integer[0]));
+            } else {
+                routine.setPRestockItemIds(new Integer[0]); // Pass empty array if null
+            }
+
+            routine.execute(dsl.configuration());
+
+            logger.info("Called ProcessAbandonedOrder procedure for sales order ID {}, abandoned by user ID {}, restock items count: {}",
+                        salesOrderId, abandonedByUserId, salesOrderItemIdsToRestock != null ? salesOrderItemIdsToRestock.size() : 0);
+
+        } catch (DataAccessException e) {
+            logger.error("Error calling ProcessAbandonedOrder procedure for sales order ID {}: {}", salesOrderId, e.getMessage(), e);
+            throw new RepositoryException("Failed to call ProcessAbandonedOrder procedure: " + e.getMessage(), e);
+        } catch (Exception e) { // Catch other unexpected exceptions
+            logger.error("Unexpected error calling ProcessAbandonedOrder procedure for sales order ID {}: {}", salesOrderId, e.getMessage(), e);
+            throw new RepositoryException("Unexpected error during ProcessAbandonedOrder procedure call: " + e.getMessage(), e);
+        } finally {
+            // Assuming closeContext is a no-op if DBManager handles connection lifecycle
+            closeContext(dsl);
+        }
+    }
 }

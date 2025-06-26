@@ -38,7 +38,7 @@ import java.util.Optional;
 
 import static com.basariatpos.db.generated.Tables.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.times; // Not used, can be removed if no verify(times)
 
 @ExtendWith(MockitoExtension.class)
 class SalesOrderRepositoryImplTest {
@@ -54,7 +54,7 @@ class SalesOrderRepositoryImplTest {
     void setUp() {
         mockDataProvider = new TestDataProvider();
         MockConnection connection = new MockConnection(mockDataProvider);
-        dslContext = DSL.using(connection, SQLDialect.POSTGRES);
+        dslContext = DSL.using(connection, SQLDialect.POSTGRES); // Ensure your project's dialect
 
         mockDBManagerStatic = Mockito.mockStatic(DBManager.class);
         mockDBManagerStatic.when(DBManager::getDSLContext).thenReturn(dslContext);
@@ -69,53 +69,54 @@ class SalesOrderRepositoryImplTest {
         SalesordersRecord salesOrderToReturn;
         SalesorderitemsRecord salesOrderItemToReturn;
         List<SalesorderitemsRecord> salesOrderItemsListToReturn = new ArrayList<>();
-        Record patientAndUserRecordToReturn; // For joined patient/user data
-        List<Record> itemProductDetailsListToReturn = new ArrayList<>(); // For joined item/product data
+        Record patientAndUserRecordToReturn;
+        List<Record> itemProductDetailsListToReturn = new ArrayList<>();
 
         int nextSalesOrderId = 1;
         int nextSoItemId = 100;
         String lastSQL;
-        int affectedRows = 1; // Default for updates/deletes
+        int affectedRows = 1;
+        Object[] capturedBindings; // To store bindings from MockExecuteContext
 
         @Override
         public MockResult[] execute(MockExecuteContext ctx) throws SQLException {
             lastSQL = ctx.sql().toUpperCase();
+            capturedBindings = ctx.bindings(); // Capture bindings
             DSLContext create = DSL.using(SQLDialect.POSTGRES);
             MockResult[] mock = new MockResult[1];
 
             if (lastSQL.startsWith("INSERT INTO \"PUBLIC\".\"SALESORDERS\"")) {
                 SalesordersRecord insertedRecord = create.newRecord(SALESORDERS);
                 insertedRecord.setSalesOrderId(nextSalesOrderId++);
-                // Map relevant fields from bindings if needed for detailed tests
                 mock[0] = new MockResult(1, DSL.result(insertedRecord));
             } else if (lastSQL.startsWith("UPDATE \"PUBLIC\".\"SALESORDERS\"")) {
                  mock[0] = new MockResult(affectedRows, create.newResult(SALESORDERS));
             } else if (lastSQL.startsWith("SELECT ") && lastSQL.contains("FROM \"PUBLIC\".\"SALESORDERS\"") && lastSQL.contains("WHERE \"PUBLIC\".\"SALESORDERS\".\"SALES_ORDER_ID\" = ?")) {
-                // For findById - header part
                 Result<SalesordersRecord> result = create.newResult(SALESORDERS);
                 if (salesOrderToReturn != null) result.add(salesOrderToReturn);
                 mock[0] = new MockResult(result.size(), result);
-            } else if (lastSQL.startsWith("SELECT ") && (lastSQL.contains("LEFT OUTER JOIN \"PUBLIC\".\"PATIENTS\"") || lastSQL.contains("JOIN \"PUBLIC\".\"USERS\""))) {
-                // For findById - patient and user details part
-                Result<Record> result = create.newResult(PATIENTS.PATIENT_SYSTEM_ID, PATIENTS.FULL_NAME_EN, USERS.FULL_NAME);
+            } else if (lastSQL.startsWith("SELECT ") && (lastSQL.contains("LEFT OUTER JOIN \"PUBLIC\".\"PATIENTS\" ON \"PUBLIC\".\"SALESORDERS\".\"PATIENT_ID\" = \"PUBLIC\".\"PATIENTS\".\"PATIENT_ID\"") || lastSQL.contains("JOIN \"PUBLIC\".\"USERS\" ON \"PUBLIC\".\"SALESORDERS\".\"CREATED_BY_USER_ID\" = \"PUBLIC\".\"USERS\".\"USER_ID\""))) {
+                // More specific pattern for patient/user join
+                Result<Record> result = create.newResult(PATIENTS.PATIENT_SYSTEM_ID, PATIENTS.FULL_NAME_EN, PATIENTS.PHONE_NUMBER, PATIENTS.WHATSAPP_OPT_IN, USERS.FULL_NAME);
                  if (patientAndUserRecordToReturn != null) result.add(patientAndUserRecordToReturn);
                 mock[0] = new MockResult(result.size(), result);
             } else if (lastSQL.startsWith("INSERT INTO \"PUBLIC\".\"SALESORDERITEMS\"")) {
                 SalesorderitemsRecord insertedItem = create.newRecord(SALESORDERITEMS);
                 insertedItem.setSoItemId(nextSoItemId++);
                 mock[0] = new MockResult(1, DSL.result(insertedItem));
-            } else if (lastSQL.startsWith("SELECT ") && lastSQL.contains("FROM \"PUBLIC\".\"SALESORDERITEMS\"") && lastSQL.contains("WHERE \"PUBLIC\".\"SALESORDERITEMS\".\"SALES_ORDER_ID\" = ?")) {
-                // For findById - items part
-                Result<Record> result = create.newResult(SALESORDERITEMS.fields());
-                result.addAll(itemProductDetailsListToReturn); // Assuming itemProductDetailsListToReturn is primed correctly
+            } else if (lastSQL.startsWith("SELECT ") && lastSQL.contains("FROM \"PUBLIC\".\"SALESORDERITEMS\"") && lastSQL.contains("LEFT OUTER JOIN \"PUBLIC\".\"INVENTORYITEMS\"") && lastSQL.contains("WHERE \"PUBLIC\".\"SALESORDERITEMS\".\"SALES_ORDER_ID\" = ?")) {
+                // More specific pattern for item details join
+                Result<Record> result = create.newResult(SALESORDERITEMS.fields()); // Add other selected fields if needed
+                result.addAll(itemProductDetailsListToReturn);
                 mock[0] = new MockResult(result.size(), result);
             } else if (lastSQL.startsWith("DELETE FROM \"PUBLIC\".\"SALESORDERITEMS\"")) {
                  mock[0] = new MockResult(affectedRows, create.newResult());
             } else if (lastSQL.startsWith("CALL \"PUBLIC\".\"RECALCULATESALESORDERSUBTOTAL\"")) {
-                 mock[0] = new MockResult(0, create.newResult()); // Stored procedure call
+                 mock[0] = new MockResult(0, create.newResult());
+            } else if (lastSQL.startsWith("CALL \"PUBLIC\".\"PROCESSABANDONEDORDER\"")) { // Check for new procedure
+                 mock[0] = new MockResult(0, create.newResult()); // Void procedures return 0 affected rows
             }
             else {
-                // Default for unhandled SQL, e.g., other SELECTs, UPDATEs
                 // System.err.println("Unhandled SQL in SalesOrder TestDataProvider: " + lastSQL);
                 mock[0] = new MockResult(affectedRows, create.newResult());
             }
@@ -131,7 +132,6 @@ class SalesOrderRepositoryImplTest {
         newOrder.setStatus("Pending");
         newOrder.setCreatedByUserId(1);
         newOrder.setShiftId(1);
-        // Other fields will be default or null
 
         SalesOrderDTO result = salesOrderRepository.saveOrderHeader(newOrder);
 
@@ -144,19 +144,16 @@ class SalesOrderRepositoryImplTest {
     @Test
     void saveOrderHeader_existingOrder_updatesAndReturnsDto() {
         SalesOrderDTO existingOrder = new SalesOrderDTO();
-        existingOrder.setSalesOrderId(1); // Existing ID
+        existingOrder.setSalesOrderId(1);
         existingOrder.setStatus("UpdatedStatus");
-        // Mock that fetchOne for update will return a record
         mockDataProvider.salesOrderToReturn = dslContext.newRecord(SALESORDERS);
         mockDataProvider.salesOrderToReturn.setSalesOrderId(1);
-
 
         SalesOrderDTO result = salesOrderRepository.saveOrderHeader(existingOrder);
         assertNotNull(result);
         assertEquals(1, result.getSalesOrderId());
         assertTrue(mockDataProvider.lastSQL.startsWith("UPDATE \"PUBLIC\".\"SALESORDERS\""));
     }
-
 
     @Test
     void saveOrderItem_newItem_returnsDtoWithId() {
@@ -176,7 +173,6 @@ class SalesOrderRepositoryImplTest {
     @Test
     void findById_existingOrder_returnsPopulatedDto() {
         int orderId = 1;
-        // Setup mock data for header
         mockDataProvider.salesOrderToReturn = dslContext.newRecord(SALESORDERS);
         mockDataProvider.salesOrderToReturn.setSalesOrderId(orderId);
         mockDataProvider.salesOrderToReturn.setPatientId(1);
@@ -190,25 +186,24 @@ class SalesOrderRepositoryImplTest {
         mockDataProvider.salesOrderToReturn.setAmountPaid(BigDecimal.ZERO);
         mockDataProvider.salesOrderToReturn.setBalanceDue(BigDecimal.ZERO);
 
-
-        // Setup mock data for patient and user details
-        mockDataProvider.patientAndUserRecordToReturn = dslContext.newRecord(PATIENTS.PATIENT_SYSTEM_ID, PATIENTS.FULL_NAME_EN, USERS.FULL_NAME);
+        mockDataProvider.patientAndUserRecordToReturn = dslContext.newRecord(PATIENTS.PATIENT_SYSTEM_ID, PATIENTS.FULL_NAME_EN, PATIENTS.PHONE_NUMBER, PATIENTS.WHATSAPP_OPT_IN, USERS.FULL_NAME);
         mockDataProvider.patientAndUserRecordToReturn.setValue(PATIENTS.PATIENT_SYSTEM_ID, "P001");
         mockDataProvider.patientAndUserRecordToReturn.setValue(PATIENTS.FULL_NAME_EN, "Test Patient");
+        mockDataProvider.patientAndUserRecordToReturn.setValue(PATIENTS.PHONE_NUMBER, "+123");
+        mockDataProvider.patientAndUserRecordToReturn.setValue(PATIENTS.WHATSAPP_OPT_IN, true);
         mockDataProvider.patientAndUserRecordToReturn.setValue(USERS.FULL_NAME, "Test User");
 
-        // Setup mock data for items with product details
         Record itemDetail1 = dslContext.newRecord(SALESORDERITEMS.fields())
             .into(SALESORDERITEMS.SO_ITEM_ID, 100)
             .into(SALESORDERITEMS.SALES_ORDER_ID, orderId)
             .into(SALESORDERITEMS.INVENTORY_ITEM_ID, 201)
             .into(SALESORDERITEMS.QUANTITY, 2)
             .into(SALESORDERITEMS.UNIT_PRICE, new BigDecimal("10.00"))
-            .into(SALESORDERITEMS.ITEM_SUBTOTAL, new BigDecimal("20.00"))
-            .into(PRODUCTS.PRODUCT_NAME_EN, "Product Alpha") // Joined field
-            .into(INVENTORYITEMS.ITEM_SPECIFIC_NAME_EN, "Red"); // Joined field
+            .into(SALESORDERITEMS.ITEM_SUBTOTAL, new BigDecimal("20.00"));
+        // Add joined product/inventory item names directly to this record if selected in query
+        itemDetail1.setValue(PRODUCTS.PRODUCT_NAME_EN, "Product Alpha");
+        itemDetail1.setValue(INVENTORYITEMS.ITEM_SPECIFIC_NAME_EN, "Red");
         mockDataProvider.itemProductDetailsListToReturn.add(itemDetail1);
-
 
         Optional<SalesOrderDTO> resultOpt = salesOrderRepository.findById(orderId);
 
@@ -241,11 +236,31 @@ class SalesOrderRepositoryImplTest {
     void updateOrderDiscount_updatesDiscountAndRecalculates() {
         mockDataProvider.setAffectedRows(1);
         salesOrderRepository.updateOrderDiscount(1, new BigDecimal("5.00"));
-        // First SQL should be UPDATE for discount
         assertTrue(mockDataProvider.lastSQL.contains("UPDATE \"PUBLIC\".\"SALESORDERS\" SET \"DISCOUNT_AMOUNT\" = ?"));
-        // The method implementation itself calls recalculate, so a subsequent CALL SQL is expected
-        // This needs a way to check sequence of SQLs or multiple calls in mockDataProvider.
-        // For simplicity, this test just checks the UPDATE part.
-        // To test the call to recalculate, one might spy on the repository or use a more advanced mock.
+    }
+
+    @Test
+    void callProcessAbandonedOrderProcedure_executesProcedure() throws RepositoryException {
+        int salesOrderId = 1;
+        int abandonedByUserId = 1;
+        List<Integer> itemIdsToRestock = List.of(101, 102);
+
+        salesOrderRepository.callProcessAbandonedOrderProcedure(salesOrderId, abandonedByUserId, itemIdsToRestock);
+
+        assertTrue(mockDataProvider.lastSQL.startsWith("CALL \"PUBLIC\".\"PROCESSABANDONEDORDER\""),
+            "SQL should call ProcessAbandonedOrder procedure. Last SQL: " + mockDataProvider.lastSQL);
+
+        // Verify parameters passed to the routine via capturedBindings
+        // Note: jOOQ wraps array parameters. The exact structure in capturedBindings might need inspection.
+        // For simple integer/list, it might be direct.
+        assertNotNull(mockDataProvider.capturedBindings, "Bindings should have been captured.");
+        assertEquals(salesOrderId, mockDataProvider.capturedBindings[0]);
+        assertEquals(abandonedByUserId, mockDataProvider.capturedBindings[1]);
+
+        // For array, jOOQ might pass it as Integer[] or java.sql.Array.
+        // Let's assume it's Integer[] for this mock test.
+        Object restockParam = mockDataProvider.capturedBindings[2];
+        assertTrue(restockParam instanceof Integer[], "Restock parameter should be an Integer array.");
+        assertArrayEquals(itemIdsToRestock.toArray(new Integer[0]), (Integer[])restockParam);
     }
 }

@@ -84,4 +84,17 @@ public interface SalesOrderRepository {
     // Potentially add a method for a full save (header + items in one transaction) if complex logic is needed here,
     // though often such orchestration is handled in the service layer.
     // SalesOrderDTO saveFullOrder(SalesOrderDTO orderDto);
+
+    /**
+     * Calls the database procedure to process an abandoned sales order.
+     * This includes updating the order status, potentially restocking selected items,
+     * and recording any associated financial loss as an expense.
+     *
+     * @param salesOrderId The ID of the sales order to be abandoned.
+     * @param abandonedByUserId The ID of the user abandoning the order.
+     * @param salesOrderItemIdsToRestock A list of sales_order_item_ids for items that should be restocked.
+     *                                   Pass an empty list if no items are to be restocked.
+     * @throws RepositoryException if there is an issue during the database procedure call.
+     */
+    void callProcessAbandonedOrderProcedure(int salesOrderId, int abandonedByUserId, List<Integer> salesOrderItemIdsToRestock) throws RepositoryException;
 }

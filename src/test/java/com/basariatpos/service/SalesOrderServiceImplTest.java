@@ -288,4 +288,118 @@ class SalesOrderServiceImplTest {
             salesOrderService.addOrderItemToOrder(1, inputItemDtoInventory);
         });
     }
+
+    // --- Tests for abandonOrder ---
+
+    @Test
+    void abandonOrder_success_callsRepositoryAndReturnsUpdatedOrder() throws Exception {
+        // Arrange
+        int salesOrderId = 1;
+        List<Integer> itemIdsToRestock = List.of(101, 102);
+        testUser.getPermissions().add("PROCESS_ABANDONED_ORDERS"); // Ensure user has permission
+
+        SalesOrderDTO existingOrder = new SalesOrderDTO();
+        existingOrder.setSalesOrderId(salesOrderId);
+        existingOrder.setStatus("Pending"); // Abandonable state
+
+        SalesOrderDTO abandonedOrder = new SalesOrderDTO();
+        abandonedOrder.setSalesOrderId(salesOrderId);
+        abandonedOrder.setStatus("Abandoned"); // Expected state after abandonment
+
+        when(mockUserSessionService.getCurrentUser()).thenReturn(testUser);
+        when(mockUserSessionService.isShiftActive()).thenReturn(true);
+        when(mockUserSessionService.getActiveShift()).thenReturn(testShift);
+        when(mockUserSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")).thenReturn(true);
+        when(mockSalesOrderRepository.findById(salesOrderId)).thenReturn(Optional.of(existingOrder));
+        doNothing().when(mockSalesOrderRepository).callProcessAbandonedOrderProcedure(salesOrderId, testUser.getUserId(), itemIdsToRestock);
+        when(salesOrderService.getSalesOrderDetails(salesOrderId)).thenReturn(Optional.of(abandonedOrder)); // Mock the call within abandonOrder
+
+        // Act
+        SalesOrderDTO result = salesOrderService.abandonOrder(salesOrderId, itemIdsToRestock);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Abandoned", result.getStatus());
+        verify(mockSalesOrderRepository).callProcessAbandonedOrderProcedure(salesOrderId, testUser.getUserId(), itemIdsToRestock);
+        verify(mockSalesOrderRepository, times(2)).findById(salesOrderId); // Once for initial check, once for getSalesOrderDetails
+    }
+
+    @Test
+    void abandonOrder_noActiveShift_throwsNoActiveShiftException() {
+        when(mockUserSessionService.isShiftActive()).thenReturn(false); // No active shift
+
+        assertThrows(NoActiveShiftException.class, () -> {
+            salesOrderService.abandonOrder(1, new ArrayList<>());
+        });
+        verify(mockSalesOrderRepository, never()).callProcessAbandonedOrderProcedure(anyInt(), anyInt(), anyList());
+    }
+
+    @Test
+    void abandonOrder_noPermission_throwsPermissionDeniedException() {
+        when(mockUserSessionService.getCurrentUser()).thenReturn(testUser); // User has no permission by default in this test setup
+        when(mockUserSessionService.isShiftActive()).thenReturn(true);
+        when(mockUserSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")).thenReturn(false);
+
+
+        assertThrows(PermissionDeniedException.class, () -> {
+            salesOrderService.abandonOrder(1, new ArrayList<>());
+        });
+    }
+
+    @Test
+    void abandonOrder_orderNotFound_throwsSalesOrderNotFoundException() {
+        when(mockUserSessionService.getCurrentUser()).thenReturn(testUser);
+        when(mockUserSessionService.isShiftActive()).thenReturn(true);
+        testUser.getPermissions().add("PROCESS_ABANDONED_ORDERS");
+        when(mockUserSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")).thenReturn(true);
+        when(mockSalesOrderRepository.findById(anyInt())).thenReturn(Optional.empty());
+
+        assertThrows(SalesOrderNotFoundException.class, () -> {
+            salesOrderService.abandonOrder(999, new ArrayList<>()); // 999 assumed not to exist
+        });
+    }
+
+    @Test
+    void abandonOrder_statusCompleted_throwsSalesOrderValidationException() {
+        int salesOrderId = 1;
+        SalesOrderDTO completedOrder = new SalesOrderDTO();
+        completedOrder.setSalesOrderId(salesOrderId);
+        completedOrder.setStatus("Completed");
+
+        when(mockUserSessionService.getCurrentUser()).thenReturn(testUser);
+        when(mockUserSessionService.isShiftActive()).thenReturn(true);
+        testUser.getPermissions().add("PROCESS_ABANDONED_ORDERS");
+        when(mockUserSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")).thenReturn(true);
+        when(mockSalesOrderRepository.findById(salesOrderId)).thenReturn(Optional.of(completedOrder));
+
+        SalesOrderValidationException ex = assertThrows(SalesOrderValidationException.class, () -> {
+            salesOrderService.abandonOrder(salesOrderId, new ArrayList<>());
+        });
+        assertTrue(ex.getErrors().stream().anyMatch(e -> e.contains("Order status 'Completed' does not allow abandonment.")));
+    }
+
+    @Test
+    void abandonOrder_repositoryThrowsException_throwsSalesOrderServiceException() throws Exception {
+        int salesOrderId = 1;
+        List<Integer> itemIdsToRestock = List.of(101);
+        testUser.getPermissions().add("PROCESS_ABANDONED_ORDERS");
+
+        SalesOrderDTO existingOrder = new SalesOrderDTO();
+        existingOrder.setSalesOrderId(salesOrderId);
+        existingOrder.setStatus("Pending");
+
+        when(mockUserSessionService.getCurrentUser()).thenReturn(testUser);
+        when(mockUserSessionService.isShiftActive()).thenReturn(true);
+        when(mockUserSessionService.getActiveShift()).thenReturn(testShift);
+        when(mockUserSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")).thenReturn(true);
+        when(mockSalesOrderRepository.findById(salesOrderId)).thenReturn(Optional.of(existingOrder));
+        doThrow(new RepositoryException("DB error on abandon"))
+            .when(mockSalesOrderRepository)
+            .callProcessAbandonedOrderProcedure(salesOrderId, testUser.getUserId(), itemIdsToRestock);
+
+        SalesOrderServiceException ex = assertThrows(SalesOrderServiceException.class, () -> {
+            salesOrderService.abandonOrder(salesOrderId, itemIdsToRestock);
+        });
+        assertTrue(ex.getMessage().contains("Failed to abandon order due to a repository error."));
+    }
 }

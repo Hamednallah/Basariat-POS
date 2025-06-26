@@ -142,6 +142,11 @@ class InventoryItemRepositoryImplTest {
             } else {
                 System.err.println("Unhandled SQL in MockDataProvider (InventoryItem): " + lastSQL);
                 mock[0] = new MockResult(0, create.newResult());
+            } else if (lastSQL.startsWith("CALL \"PUBLIC\".\"PROCESSORDERCOMPLETIONSTOCKUPDATE\"")) { // Added for procedure
+                // Procedures typically don't return a result set in the same way functions do.
+                // They might return an update count or nothing.
+                // For this mock, we simulate it completing successfully.
+                mock[0] = new MockResult(0, create.newResult()); // 0 records, success
             }
             return mock;
         }
@@ -276,5 +281,28 @@ class InventoryItemRepositoryImplTest {
         // For now, we'll test the successful path, as the repo method is simple.
         boolean result = itemRepository.adjustStockQuantity(1, 10);
         assertTrue(result); // This is based on the default mock returning 1 row affected.
+    }
+
+    @Test
+    void executeProcessOrderCompletionStockUpdateProcedure_callsProcedure() throws Exception {
+        int testSalesOrderId = 987;
+
+        // No specific record to return for a void procedure call,
+        // but the TestDataProvider needs to recognize the SQL.
+        itemRepository.executeProcessOrderCompletionStockUpdateProcedure(testSalesOrderId);
+
+        assertNotNull(mockDataProvider.lastSQL, "SQL should have been executed.");
+        assertTrue(mockDataProvider.lastSQL.startsWith("CALL \"PUBLIC\".\"PROCESSORDERCOMPLETIONSTOCKUPDATE\""),
+            "The SQL call should be for PROCESSORDERCOMPLETIONSTOCKUPDATE procedure.");
+
+        // Verify the parameter passed to the procedure.
+        // This requires that MockExecuteContext.bindings() captures routine parameters correctly.
+        // jOOQ routines might pass parameters differently than simple DML.
+        // If ctx.bindings() contains the salesOrderId for routines:
+        // assertEquals(testSalesOrderId, ((Integer[])mockDataProvider.capturedBindings[0])[0]); // Example, actual structure might vary.
+        // For a single parameter routine, it might be simpler:
+        // assertEquals(testSalesOrderId, mockDataProvider.capturedBindings[0]);
+        // This part is highly dependent on how jOOQ's MockDataProvider exposes routine parameters.
+        // For now, verifying the procedure name in lastSQL is the primary check.
     }
 }

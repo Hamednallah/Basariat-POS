@@ -413,4 +413,54 @@ public class SalesOrderServiceImpl implements SalesOrderService {
             throw new NoActiveShiftException("Operation requires an active shift for current user.");
         }
     }
+
+    @Override
+    public SalesOrderDTO abandonOrder(int salesOrderId, List<Integer> salesOrderItemIdsToRestock)
+            throws SalesOrderNotFoundException, SalesOrderValidationException, PermissionDeniedException,
+                   NoActiveShiftException, SalesOrderServiceException {
+        logger.info("Attempting to abandon sales order ID: {}", salesOrderId);
+        validateActiveShift(); // Ensures user and active shift are present
+
+        UserDTO currentUser = userSessionService.getCurrentUser(); // Already validated by validateActiveShift indirectly
+        if (!userSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")) {
+            logger.warn("User {} does not have permission to abandon orders.", currentUser.getUsername());
+            throw new PermissionDeniedException("Abandon Order", "User does not have PROCESS_ABANDONED_ORDERS permission.");
+        }
+
+        SalesOrderDTO orderToAbandon = salesOrderRepository.findById(salesOrderId)
+            .orElseThrow(() -> new SalesOrderNotFoundException(salesOrderId));
+
+        // Validate order status - cannot abandon if already completed, cancelled, or abandoned
+        String currentStatus = orderToAbandon.getStatus();
+        if ("Completed".equalsIgnoreCase(currentStatus) ||
+            "Cancelled".equalsIgnoreCase(currentStatus) ||
+            "Abandoned".equalsIgnoreCase(currentStatus)) {
+            logger.warn("Cannot abandon order ID {} with status: {}", salesOrderId, currentStatus);
+            throw new SalesOrderValidationException(
+                "Order cannot be abandoned because its current status is '" + currentStatus + "'.",
+                List.of("Order status '" + currentStatus + "' does not allow abandonment.")
+            );
+        }
+
+        try {
+            // Ensure the list is not null for the repository
+            List<Integer> restockIds = (salesOrderItemIdsToRestock == null) ? new ArrayList<>() : salesOrderItemIdsToRestock;
+
+            salesOrderRepository.callProcessAbandonedOrderProcedure(salesOrderId, currentUser.getUserId(), restockIds);
+            logger.info("Sales order ID {} successfully processed for abandonment by user ID {}.", salesOrderId, currentUser.getUserId());
+
+            // Fetch and return the updated order details
+            return this.getSalesOrderDetails(salesOrderId)
+                .orElseThrow(() -> {
+                    logger.error("Failed to retrieve order details for ID {} after abandonment.", salesOrderId);
+                    return new SalesOrderServiceException("Order details could not be retrieved after abandonment process for order ID: " + salesOrderId);
+                });
+        } catch (RepositoryException e) {
+            logger.error("Repository error while abandoning order ID {}: {}", salesOrderId, e.getMessage(), e);
+            throw new SalesOrderServiceException("Failed to abandon order due to a repository error.", e);
+        } catch (Exception e) { // Catch any other unexpected errors
+            logger.error("Unexpected error while abandoning order ID {}: {}", salesOrderId, e.getMessage(), e);
+            throw new SalesOrderServiceException("An unexpected error occurred while abandoning the order.", e);
+        }
+    }
 }
