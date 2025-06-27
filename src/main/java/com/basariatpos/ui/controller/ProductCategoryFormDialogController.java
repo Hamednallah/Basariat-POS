@@ -33,6 +33,7 @@ public class ProductCategoryFormDialogController implements Initializable {
     // No Active CheckBox for product categories
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox productCategoryFormRootPane; // For RTL
 
     private Stage dialogStage;
     private ProductCategoryService productCategoryService;
@@ -42,11 +43,27 @@ public class ProductCategoryFormDialogController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Nothing specific to initialize here for product categories form beyond FXML loading
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (productCategoryFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                productCategoryFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                productCategoryFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("productCategoryFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        updateNodeOrientation(); // Ensure orientation is set when stage is available
+        if (this.dialogStage != null && productCategoryFormRootPane != null && this.dialogStage.getScene() != null) {
+            this.dialogStage.getScene().setNodeOrientation(productCategoryFormRootPane.getNodeOrientation());
+        }
     }
 
     public void setProductCategoryService(ProductCategoryService productCategoryService) {

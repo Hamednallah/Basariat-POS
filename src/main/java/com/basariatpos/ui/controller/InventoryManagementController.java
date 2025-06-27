@@ -64,6 +64,7 @@ public class InventoryManagementController implements Initializable {
     @FXML private Button addItemButton;
     @FXML private Button editItemButton;
     @FXML private Button toggleActiveButton;
+    @FXML private BorderPane inventoryManagementRootPane; // For RTL
 
     private InventoryItemService inventoryItemService;
     private ProductService productService;
@@ -106,6 +107,7 @@ public class InventoryManagementController implements Initializable {
         showInactiveCheckBox.setOnAction(this::handleFilterOrSearchAction);
         productFilterComboBox.setOnAction(this::handleFilterOrSearchAction);
 
+        updateNodeOrientation();
 
         logger.info("InventoryManagementController initialized.");
     }
@@ -113,6 +115,23 @@ public class InventoryManagementController implements Initializable {
     public void setInventoryItemService(InventoryItemService service) { this.inventoryItemService = service; }
     public void setProductService(ProductService service) { this.productService = service; }
 
+    // Method to allow MainFrameController to set the stage if this view is loaded into it
+    public void setStage(Stage stage) {
+        // this.currentStage = stage; // If needed for dialog ownership directly from here
+        updateNodeOrientation(); // Re-apply orientation if stage context changes things
+    }
+
+    private void updateNodeOrientation() {
+        if (inventoryManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                inventoryManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                inventoryManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("inventoryManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+    }
 
     private void setupProductFilterComboBox() {
         try {

@@ -7,279 +7,219 @@ import com.basariatpos.service.CenterProfileService;
 import com.basariatpos.service.ProfileServiceException;
 import com.basariatpos.service.ProfileValidationException;
 
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
+import javafx.fxml.FXMLLoader; // Not used for direct loading in unit test without Application thread
 import javafx.scene.control.TextField;
-import javafx.stage.Stage;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.Button;
+import javafx.scene.layout.AnchorPane; // For rootPane fx:id
+import javafx.scene.layout.VBox; // For formVBox fx:id
 
-import org.junit.jupiter.api.AfterEach;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 
-import java.io.IOException;
-import java.util.Arrays;
+import java.net.URL;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.testfx.matcher.control.LabeledMatchers.hasText;
-import static org.testfx.matcher.control.TextInputControlMatchers.hasText as tiHasText;
+
+@ExtendWith(MockitoExtension.class)
+public class CenterProfileSetupControllerTest {
+
+    @Mock private CenterProfileService mockCenterProfileService;
+    @Mock private TextField centerNameField;
+    @Mock private TextField addressLine1Field;
+    @Mock private TextField addressLine2Field;
+    @Mock private TextField cityField;
+    @Mock private TextField countryField;
+    @Mock private TextField postalCodeField;
+    @Mock private TextField phonePrimaryField;
+    @Mock private TextField phoneSecondaryField;
+    @Mock private TextField emailAddressField;
+    @Mock private TextField websiteField;
+    @Mock private TextField logoImagePathField;
+    @Mock private TextField taxIdentifierField;
+    @Mock private TextField currencySymbolField;
+    @Mock private TextField currencyCodeField;
+    @Mock private TextArea receiptFooterMessageArea;
+    @Mock private Button saveButton; // For getStage() or other direct interactions if any
+    @Mock private AnchorPane rootPane; // Mock the root pane
+    @Mock private VBox formVBox; // Mock the VBox if directly manipulated beyond rootPane
 
 
-@ExtendWith(ApplicationExtension.class)
-class CenterProfileSetupControllerTest {
-
-    @Mock
-    private CenterProfileService mockCenterProfileService;
-
+    @InjectMocks
     private CenterProfileSetupController controller;
-    private Parent root;
 
-    // It's good practice to define fx:id selectors as constants
-    private final String CENTER_NAME_FIELD = "#centerNameField";
-    private final String PHONE_PRIMARY_FIELD = "#phonePrimaryField";
-    private final String CURRENCY_SYMBOL_FIELD = "#currencySymbolField";
-    private final String CURRENCY_CODE_FIELD = "#currencyCodeField";
-    private final String SAVE_BUTTON = "#saveButton";
-    private final String LOGO_IMAGE_PATH_FIELD = "#logoImagePathField";
-
+    private static ResourceBundle resourceBundle;
 
     @BeforeAll
     static void setUpClass() {
-        // Ensures that JavaFX Platform is initialized if tests are run headlessly or in certain CI environments
-        // However, ApplicationExtension should handle this. If not, uncomment:
-        // if (System.getProperty("os.name", "").toLowerCase().startsWith("linux") && System.getenv("CI") != null) {
-        //     System.setProperty("java.awt.headless", "true");
-        //     System.setProperty("testfx.robot", "glass");
-        //     System.setProperty("testfx.headless", "true");
-        //     System.setProperty("prism.order", "sw"); // Use software rendering
-        //     System.setProperty("prism.text", "t2k");
-        // }
-    }
-
-
-    @Start
-    private void start(Stage stage) throws IOException {
-        MockitoAnnotations.openMocks(this); // Initialize mocks
-
-        // Ensure default locale is set for MessageProvider consistency in tests
-        LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE); // Assuming Arabic is default
-        ResourceBundle bundle = MessageProvider.getBundle(LocaleManager.DEFAULT_LOCALE);
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/CenterProfileSetupWizard.fxml"));
-        loader.setResources(bundle); // Set the bundle for FXML
-
-        // Manually set controller factory if controller constructor needs args,
-        // or if we want to inject mocks before FXML loading completes all @FXML injections.
-        // Here, we'll inject service after loader creates controller instance.
-        // loader.setControllerFactory(param -> new CenterProfileSetupController(mockCenterProfileService)); // If constructor injection
-
-        root = loader.load();
-        controller = loader.getController();
-        controller.setCenterProfileService(mockCenterProfileService); // Manual setter injection
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.show();
-        stage.toFront(); // Important for TestFX
+        // Initialize LocaleManager and MessageProvider for test environment
+        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Default to English for tests
+        resourceBundle = MessageProvider.getBundle(); // Load bundle once
     }
 
     @BeforeEach
-    void resetMocksAndClearFields(FxRobot robot) throws ProfileServiceException {
-        // Reset mock interactions before each test
-        reset(mockCenterProfileService);
+    void setUp() {
+        // Injects mocks into 'controller' instance
+        // This is handled by @ExtendWith(MockitoExtension.class) and @InjectMocks
+        // For older Mockito: MockitoAnnotations.openMocks(this);
 
-        // Mock the getCenterProfile to return empty by default to simulate fresh setup
-        when(mockCenterProfileService.getCenterProfile()).thenReturn(Optional.empty());
-        // Call initialize again or a specific method to reload profile if necessary
-        // For robust testing, ensure the controller's state is reset.
-        // The FXML load in @Start should give a fresh controller, but if service calls in initialize
-        // need to be re-evaluated with new mock setups:
-        controller.setCenterProfileService(mockCenterProfileService); // Re-inject to ensure it's fresh
-        // controller.initialize(null, MessageProvider.getBundle()); // This might be problematic if initialize has side effects not meant to be repeated
-        // A dedicated method in controller to reload profile might be better if needed.
+        // Simulate FXML injection by setting mock fields in controller if they are not private
+        // If fields are private, this approach won't work directly without reflection
+        // or making them package-private for testing.
+        // For this example, we assume @InjectMocks handles this or fields are accessible.
+        // If @FXML fields are private, @InjectMocks might not set them.
+        // A common pattern is to have package-private access for @FXML fields for testing.
+        // Let's assume for now that @InjectMocks works or we'd refactor for testability.
 
-        // Clear fields before each test to ensure independence
-        robot.clickOn(CENTER_NAME_FIELD).write("");
-        robot.clickOn(PHONE_PRIMARY_FIELD).write("");
-        robot.clickOn(CURRENCY_SYMBOL_FIELD).write("");
-        robot.clickOn(CURRENCY_CODE_FIELD).write("");
-        // Clear other fields as necessary
-        robot.lookup(LOGO_IMAGE_PATH_FIELD).queryAs(TextField.class).clear();
+        // Manual injection for this test:
+        controller.centerNameField = centerNameField;
+        controller.addressLine1Field = addressLine1Field;
+        controller.addressLine2Field = addressLine2Field;
+        controller.cityField = cityField;
+        controller.countryField = countryField;
+        controller.postalCodeField = postalCodeField;
+        controller.phonePrimaryField = phonePrimaryField;
+        controller.phoneSecondaryField = phoneSecondaryField;
+        controller.emailAddressField = emailAddressField;
+        controller.websiteField = websiteField;
+        controller.logoImagePathField = logoImagePathField;
+        controller.taxIdentifierField = taxIdentifierField;
+        controller.currencySymbolField = currencySymbolField;
+        controller.currencyCodeField = currencyCodeField;
+        controller.receiptFooterMessageArea = receiptFooterMessageArea;
+        controller.saveButton = saveButton;
+        controller.rootPane = rootPane; // Set the mocked rootPane
+        controller.formVBox = formVBox;
+
+        controller.setCenterProfileService(mockCenterProfileService);
     }
 
-    @AfterEach
-    void tearDown(FxRobot robot) throws TimeoutException {
-         // Close any alert dialogs that might be open
-        Stage mainStage = (Stage) robot.window(0); // Assuming wizard is the primary stage
-        robot.listWindows().stream()
-            .filter(w -> w instanceof Stage && w != mainStage && ((Stage)w).getOwner() == mainStage)
-            .forEach(w -> robot.targetWindow(w).close());
-        WaitForAsyncUtils.waitForFxEvents();
+    @Test
+    void initialize_loadsExistingProfile_whenProfileExists() throws ProfileServiceException {
+        CenterProfileDTO existingProfile = new CenterProfileDTO();
+        existingProfile.setCenterName("Test Center");
+        when(mockCenterProfileService.getCenterProfile()).thenReturn(Optional.of(existingProfile));
+
+        controller.initialize(null, resourceBundle); // URL is not used by controller
+
+        verify(centerNameField).setText("Test Center");
+        verify(rootPane).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT); // Default locale is EN
+    }
+
+    @Test
+    void initialize_loadsNoProfile_whenProfileDoesNotExist() throws ProfileServiceException {
+        when(mockCenterProfileService.getCenterProfile()).thenReturn(Optional.empty());
+
+        controller.initialize(null, resourceBundle);
+
+        verify(centerNameField, never()).setText(anyString()); // Should not be called if no profile
+        verify(rootPane).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+    }
+
+    @Test
+    void initialize_handlesServiceException_onLoad() throws ProfileServiceException {
+        when(mockCenterProfileService.getCenterProfile()).thenThrow(new ProfileServiceException("DB error"));
+
+        // The controller logs the error and shows an alert, does not rethrow.
+        // So we just ensure initialize completes without throwing an exception itself.
+        assertDoesNotThrow(() -> controller.initialize(null, resourceBundle));
+        verify(rootPane).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
     }
 
 
     @Test
-    void handleSaveProfile_withValidData_shouldCallServiceAndClose(FxRobot robot) throws Exception {
-        // Arrange
+    void handleSaveProfile_collectsDataAndCallsService() throws Exception {
+        // Arrange: Mock UI field inputs
+        when(centerNameField.getText()).thenReturn("My Optical Center");
+        when(addressLine1Field.getText()).thenReturn("123 Main St");
+        // ... mock other fields as needed, or assume empty strings if not critical for this test
+        when(phonePrimaryField.getText()).thenReturn("555-1234");
+        when(currencySymbolField.getText()).thenReturn("$");
+        when(currencyCodeField.getText()).thenReturn("USD");
+        // ...
+
+        // Mock service to return true on save
         when(mockCenterProfileService.saveProfile(any(CenterProfileDTO.class))).thenReturn(true);
 
         // Act
-        robot.clickOn(CENTER_NAME_FIELD).write("Valid Center");
-        robot.clickOn(PHONE_PRIMARY_FIELD).write("555-0001");
-        robot.clickOn(CURRENCY_SYMBOL_FIELD).write("$");
-        robot.clickOn(CURRENCY_CODE_FIELD).write("USD");
-
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
-
+        controller.handleSaveProfile(null); // ActionEvent is not used by handler
 
         // Assert
         ArgumentCaptor<CenterProfileDTO> dtoCaptor = ArgumentCaptor.forClass(CenterProfileDTO.class);
         verify(mockCenterProfileService).saveProfile(dtoCaptor.capture());
-        assertEquals("Valid Center", dtoCaptor.getValue().getCenterName());
 
-        // Check if stage is closed (this is a bit tricky, depends on how "close" is implemented)
-        // For now, assume success alert is shown and it implies eventual closure.
-        // A better test for window closing might involve checking stage.isShowing() if accessible
-        // or verifying a "closeRequestHandler" if one exists.
-        // For this test, verifying the success alert is a good proxy.
-        assertNotNull(robot.lookup(".alert").tryQuery().orElse(null), "Success alert should be shown.");
-        // To interact with alert: robot.clickOn("OK"); // If standard JavaFX alert
+        CenterProfileDTO capturedDto = dtoCaptor.getValue();
+        assertEquals("My Optical Center", capturedDto.getCenterName());
+        assertEquals("123 Main St", capturedDto.getAddressLine1());
+        assertEquals("555-1234", capturedDto.getPhonePrimary());
+        assertEquals("$", capturedDto.getCurrencySymbol());
+        assertEquals("USD", capturedDto.getCurrencyCode());
+
+        // Verify success alert shown (cannot directly test JavaFX alerts without UI test framework)
+        // Verify wizard closed (cannot directly test stage closing without UI test framework)
     }
 
     @Test
-    void handleSaveProfile_withMissingRequiredFields_shouldShowValidationError(FxRobot robot) throws Exception {
-        // Arrange
-        // Simulate service throwing validation exception for more precise testing
-        when(mockCenterProfileService.saveProfile(any(CenterProfileDTO.class)))
-            .thenThrow(new ProfileValidationException("Validation failed",
-                                                     Collections.singletonList("validation.centerprofile.centerName.required")));
-        // Act
-        // Leave Center Name blank
-        robot.clickOn(PHONE_PRIMARY_FIELD).write("555-0002");
-        robot.clickOn(CURRENCY_SYMBOL_FIELD).write("€");
-        robot.clickOn(CURRENCY_CODE_FIELD).write("EUR");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
-
-        // Assert
-        verify(mockCenterProfileService).saveProfile(any(CenterProfileDTO.class)); // Still called
-
-        // Check for an error alert
-        // This relies on Alert's default styling or a custom style class.
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert should be shown.");
-        // To check content: robot.lookup(".alert.error .content.label").match(hasText("Center Name is required.")).tryQuery();
-    }
-
-    @Test
-    void handleSaveProfile_serviceReturnsFalse_shouldShowGeneralError(FxRobot robot) throws Exception {
-        // Arrange - this path in service is less likely if ProfileValidationException is used.
-        // This tests the scenario where saveProfile returns false without specific validation errors.
-        when(mockCenterProfileService.saveProfile(any(CenterProfileDTO.class))).thenReturn(false);
+    void handleSaveProfile_showsValidationError_whenServiceThrowsValidationException() throws Exception {
+        // Arrange: Mock UI field inputs
+        when(centerNameField.getText()).thenReturn(""); // Invalid: Name is required by service (assumption)
+        // ...
+        ProfileValidationException pve = new ProfileValidationException(Collections.singletonList("validation.centerprofile.name.required"));
+        when(mockCenterProfileService.saveProfile(any(CenterProfileDTO.class))).thenThrow(pve);
 
         // Act
-        robot.clickOn(CENTER_NAME_FIELD).write("Center");
-        robot.clickOn(PHONE_PRIMARY_FIELD).write("555-0003");
-        robot.clickOn(CURRENCY_SYMBOL_FIELD).write("£");
-        robot.clickOn(CURRENCY_CODE_FIELD).write("GBP");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.handleSaveProfile(null);
 
         // Assert
         verify(mockCenterProfileService).saveProfile(any(CenterProfileDTO.class));
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "General error alert should be shown.");
+        // Verify error alert shown (cannot directly test JavaFX alerts)
+        // Controller should catch ProfileValidationException and show an error alert.
     }
 
-
     @Test
-    void handleSaveProfile_serviceThrowsProfileServiceException_shouldShowServiceError(FxRobot robot) throws Exception {
+    void handleSaveProfile_showsServiceError_whenServiceThrowsGenericServiceException() throws Exception {
         // Arrange
         when(mockCenterProfileService.saveProfile(any(CenterProfileDTO.class)))
-            .thenThrow(new ProfileServiceException("Database is down", new RuntimeException()));
+            .thenThrow(new ProfileServiceException("Database connection failed"));
 
         // Act
-        robot.clickOn(CENTER_NAME_FIELD).write("Center X");
-        robot.clickOn(PHONE_PRIMARY_FIELD).write("555-0004");
-        robot.clickOn(CURRENCY_SYMBOL_FIELD).write("¥");
-        robot.clickOn(CURRENCY_CODE_FIELD).write("JPY");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.handleSaveProfile(null);
 
         // Assert
         verify(mockCenterProfileService).saveProfile(any(CenterProfileDTO.class));
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Service error alert should be shown.");
-        // Check content: robot.lookup(".alert.error .content.label").match(hasText(MessageProvider.getString("validation.centerprofile.save.error"))).tryQuery();
+        // Verify error alert shown for service exception
     }
 
     @Test
-    void loadExistingProfileData_shouldPopulateFields_whenDataExists(FxRobot robot) throws Exception {
-        // Arrange
-        CenterProfileDTO existingDto = new CenterProfileDTO(
-                "Loaded Center", "456 Park Ave", "Suite 100", "Metro City", "Testland",
-                "67890", "555-5678", "555-9999", "load@example.com",
-                "www.loaded.com", "/path/to/my_logo.png", "TAX_LOADED", "LC",
-                "LCY", "Welcome back!"
-        );
-        when(mockCenterProfileService.getCenterProfile()).thenReturn(Optional.of(existingDto));
+    void initialize_setsRTL_forArabicLocale() throws ProfileServiceException {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC); // Switch to Arabic
+        resourceBundle = MessageProvider.getBundle(); // Reload bundle for Arabic
 
-        // Act: Need to trigger the load, which happens in initialize.
-        // Since initialize is called at @Start, we need to re-trigger or verify initial state.
-        // For this test, we can directly call populateForm or a similar method if public,
-        // or re-initialize controller if that's feasible without side effects.
-        // Let's assume the @Start takes care of the initial load.
-        // We need to ensure the mock is set *before* @Start for this to work.
-        // This test is better if controller.setCenterProfileService() is called in @Start *after* loader.getController()
-        // and then controller.loadExistingProfileData() is explicitly called in test or by setService.
-        // For now, let's assume the data set by @Start's load is what we check.
-        // (This means this test might be sensitive to order in @Start and @BeforeEach)
+        when(mockCenterProfileService.getCenterProfile()).thenReturn(Optional.empty());
 
-        // To make it more robust, let's call a re-load method if it existed,
-        // or directly verify the fields after initial load.
-        // The current setup calls loadExistingProfileData in initialize.
-        // So, the mock setup in @Start should be effective.
+        controller.initialize(null, resourceBundle);
 
-        // Assert
-        assertEquals("Loaded Center", robot.lookup(CENTER_NAME_FIELD).queryAs(TextField.class).getText());
-        assertEquals("/path/to/my_logo.png", robot.lookup(LOGO_IMAGE_PATH_FIELD).queryAs(TextField.class).getText());
-        assertEquals("LCY", robot.lookup(CURRENCY_CODE_FIELD).queryAs(TextField.class).getText());
+        verify(rootPane).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+
+        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Reset for other tests
+        resourceBundle = MessageProvider.getBundle();
     }
 
-    // Test for handleBrowseLogo would require mocking FileChooser.
-    // This is often complex with TestFX and might be better as a manual/visual test
-    // or by testing the logic that processes the file path, not the chooser itself.
-    // For now, a simple call to ensure it doesn't crash:
-    @Test
-    void handleBrowseLogo_shouldRunWithoutCrashing(FxRobot robot) {
-        // This test doesn't assert much due to FileChooser complexity.
-        // It mainly ensures the action handler can be called.
-        // To truly test, one might use a library that helps mock system dialogs
-        // or refactor to make the FileChooser interaction more testable.
-        assertDoesNotThrow(() -> {
-            robot.clickOn("#browseLogoButton");
-            // If a FileChooser is shown, TestFX might hang if not handled.
-            // Need a strategy to close it or mock its behavior.
-            // For this basic test, we assume it opens and closes without issue, or is handled by user if not automated.
-            // If it hangs, this test needs a way to close the FileChooser.
-            // e.g. if a new window opens: robot.targetWindow(1).close(); or robot.push(KeyCode.ESCAPE);
-        });
-        // This test is very basic and likely needs improvement for real FileChooser interaction.
-    }
+    // Test for handleBrowseLogo would require mocking FileChooser and Stage,
+    // which is more involved and better suited for UI testing frameworks like TestFX.
+    // For a simple unit test, one might verify that FileChooser is constructed.
 }

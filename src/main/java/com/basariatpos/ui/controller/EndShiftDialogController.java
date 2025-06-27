@@ -37,6 +37,7 @@ public class EndShiftDialogController {
     @FXML private TextArea notesArea;
     @FXML private Button endShiftButton;
     @FXML private Button cancelButton;
+    @FXML private VBox endShiftDialogRootPane; // For RTL
 
     private Stage dialogStage;
     private ShiftDTO currentShift;
@@ -62,7 +63,24 @@ public class EndShiftDialogController {
         }
 
         populateShiftDetails();
+        updateNodeOrientation(); // Call after FXML elements are available
     }
+
+    private void updateNodeOrientation() {
+        if (endShiftDialogRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                endShiftDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                endShiftDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("endShiftDialogRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+        if (dialogStage != null && dialogStage.getScene() != null && endShiftDialogRootPane != null) {
+             dialogStage.getScene().setNodeOrientation(endShiftDialogRootPane.getNodeOrientation());
+        }
+    }
+
 
     private void populateShiftDetails() {
         if (currentShift != null) {

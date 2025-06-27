@@ -34,6 +34,7 @@ public class ExpenseCategoryFormDialogController implements Initializable {
     @FXML private CheckBox activeCheckBox;
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox expenseCategoryFormRootPane; // For RTL
 
     private Stage dialogStage;
     private ExpenseCategoryService expenseCategoryService;
@@ -44,10 +45,27 @@ public class ExpenseCategoryFormDialogController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         activeCheckBox.setSelected(true); // Default for new category
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (expenseCategoryFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                expenseCategoryFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                expenseCategoryFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("expenseCategoryFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        updateNodeOrientation(); // Ensure orientation is set when stage is available
+        if (this.dialogStage != null && expenseCategoryFormRootPane != null && this.dialogStage.getScene() != null) {
+            this.dialogStage.getScene().setNodeOrientation(expenseCategoryFormRootPane.getNodeOrientation());
+        }
     }
 
     public void setExpenseCategoryService(ExpenseCategoryService expenseCategoryService) {

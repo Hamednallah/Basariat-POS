@@ -8,12 +8,12 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
-import java.text.ParseException;
 import java.util.Locale;
 
 public class StartShiftDialogController {
@@ -23,6 +23,7 @@ public class StartShiftDialogController {
     @FXML private TextField openingFloatFld;
     @FXML private Button startButton;
     @FXML private Button cancelButton;
+    @FXML private VBox startShiftDialogRootPane;
 
     private Stage dialogStage;
     private boolean saved = false;
@@ -31,22 +32,35 @@ public class StartShiftDialogController {
 
 
     public void initialize() {
-        // Initialize number format based on current locale for parsing
-        // This assumes that the input might be locale-specific if not using a strict regex.
-        // For stricter control, one might use a regex or ensure input is always in a specific format (e.g., using dots for decimals).
-        numberFormat = NumberFormat.getNumberInstance(Locale.US); // Using US locale for dot decimal separator consistency
-        numberFormat.setGroupingUsed(false); // No thousands separators expected in input generally
+        numberFormat = NumberFormat.getNumberInstance(Locale.US);
+        numberFormat.setGroupingUsed(false);
 
-        // Add a listener to validate input as user types, or use a TextFormatter
         openingFloatFld.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*([\\.,]\\d*)?")) { // Allow digits, and optionally one dot or comma
+            if (!newValue.matches("\\d*([\\.,]?\\d*)?")) {
                  openingFloatFld.setText(newValue.replaceAll("[^\\d\\.,]", ""));
             }
         });
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (startShiftDialogRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                startShiftDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                startShiftDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("startShiftDialogRootPane is null during initialize. RTL/LTR might not be set initially.");
+        }
     }
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        updateNodeOrientation();
+        if (this.dialogStage != null && startShiftDialogRootPane != null && this.dialogStage.getScene() != null) {
+            this.dialogStage.getScene().setNodeOrientation(startShiftDialogRootPane.getNodeOrientation());
+        }
     }
 
     @FXML
@@ -66,20 +80,22 @@ public class StartShiftDialogController {
     private boolean validateInput() {
         String floatText = openingFloatFld.getText();
         if (floatText == null || floatText.trim().isEmpty()) {
-            showErrorAlert(MessageProvider.getString("startshiftdialog.error.openingFloat.invalid"), "Opening float cannot be empty.");
+            showErrorAlert(MessageProvider.getString("startshiftdialog.error.openingFloat.invalid"),
+                           MessageProvider.getString("validation.general.cannotBeEmpty"));
             return false;
         }
         try {
-            // Normalize comma to dot for BigDecimal conversion if using locale-agnostic parsing
             String normalizedText = floatText.replace(',', '.');
             openingFloat = new BigDecimal(normalizedText);
             if (openingFloat.compareTo(BigDecimal.ZERO) < 0) {
-                showErrorAlert(MessageProvider.getString("startshiftdialog.error.openingFloat.invalid"), "Opening float must be zero or positive.");
+                showErrorAlert(MessageProvider.getString("startshiftdialog.error.openingFloat.invalid"),
+                               MessageProvider.getString("validation.general.mustBeZeroOrPositive"));
                 return false;
             }
         } catch (NumberFormatException e) {
             logger.warn("Invalid number format for opening float: {}", floatText, e);
-            showErrorAlert(MessageProvider.getString("startshiftdialog.error.openingFloat.invalid"), "Invalid number format. Please use digits and optionally a decimal point.");
+            showErrorAlert(MessageProvider.getString("startshiftdialog.error.openingFloat.invalid"),
+                           MessageProvider.getString("validation.general.invalidNumberFormat"));
             return false;
         }
         return true;
@@ -91,6 +107,9 @@ public class StartShiftDialogController {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.initOwner(dialogStage);
+        if (dialogStage != null && dialogStage.getScene() != null && dialogStage.getScene().getRoot() != null) {
+             alert.getDialogPane().setNodeOrientation(dialogStage.getScene().getRoot().getNodeOrientation());
+        }
         alert.showAndWait();
     }
 
@@ -106,8 +125,12 @@ public class StartShiftDialogController {
         if (dialogStage != null) {
             dialogStage.close();
         } else {
-            Stage stage = (Stage) startButton.getScene().getWindow();
-            stage.close();
+            if (startButton != null && startButton.getScene() != null) {
+                 Stage stage = (Stage) startButton.getScene().getWindow();
+                 stage.close();
+            } else {
+                logger.warn("Could not close StartShiftDialog as dialogStage and button scene are null.");
+            }
         }
     }
 }

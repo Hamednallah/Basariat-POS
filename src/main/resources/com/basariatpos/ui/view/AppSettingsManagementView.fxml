@@ -11,7 +11,7 @@
 
 <BorderPane fx:id="appSettingsManagementRootPane" prefHeight="600.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.AppSettingsManagementController">
     <stylesheets>
-        <String fx:value="@styles.css" />
+        <String fx:value="@../style/basariat-pos.css" />
     </stylesheets>
     <top>
         <VBox>

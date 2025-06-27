@@ -48,17 +48,27 @@ public class UserManagementController implements Initializable {
     @FXML private Button editUserButton;
     @FXML private Button toggleActivityButton;
     @FXML private Button resetPasswordButton;
+    @FXML private BorderPane userManagementRootPane; // For RTL
 
     private UserService userService;
     private final ObservableList<UserDTO> userObservableList = FXCollections.observableArrayList();
+    private Stage currentStage; // To set owner for dialogs
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // In a real app, UserService would be injected by a DI framework.
-        // For Sprint 0, we might get it from AppLauncher or instantiate directly.
-        // userService = AppLauncher.getUserService(); // Ideal
-        userService = new UserServiceImpl(new UserRepositoryImpl()); // Temporary direct instantiation
+        // Ensure this controller gets the stage to set owner for dialogs
+        // This is often done by passing the stage from where this view is loaded (e.g., MainFrameController)
+        // For now, we'll assume it might be set via a setter if needed, or alerts will be app-modal.
 
+        // Get UserService from AppLauncher as per current pattern
+        this.userService = AppLauncher.getUserService();
+        if (this.userService == null) {
+            // Fallback for standalone testing or if AppLauncher pattern fails, not for production
+            logger.warn("UserService not found via AppLauncher, using temporary instance for UserManagementController.");
+            this.userService = new UserServiceImpl(new UserRepositoryImpl());
+        }
+
+        updateNodeOrientation();
         setupTableColumns();
         loadUsers();
 
@@ -68,9 +78,23 @@ public class UserManagementController implements Initializable {
             toggleActivityButton.setDisable(!userSelected);
             resetPasswordButton.setDisable(!userSelected);
         });
-
-        // Set button graphics if using FontAwesome or similar (later task)
         logger.info("UserManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+    }
+
+    private void updateNodeOrientation() {
+        if (userManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                userManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                userManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("userManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     // Public setter for UserService if needed for external initialization (e.g. by AppLauncher)

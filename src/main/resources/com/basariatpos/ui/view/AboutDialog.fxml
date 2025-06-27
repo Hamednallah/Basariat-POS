@@ -13,7 +13,7 @@
 
 <VBox fx:id="aboutDialogRoot" alignment="TOP_CENTER" prefWidth="600.0" spacing="15.0" styleClass="dialog-container" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.AboutDialogController">
     <stylesheets>
-        <String fx:value="@styles.css" />
+        <String fx:value="@../style/basariat-pos.css" />
     </stylesheets>
     <padding>
         <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />

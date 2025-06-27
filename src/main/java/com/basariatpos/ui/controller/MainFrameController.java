@@ -78,6 +78,22 @@ public class MainFrameController implements Initializable {
     @FXML private Menu menuHelp;
     @FXML private MenuItem viewUserManualMenuItem;
     @FXML private MenuItem menuHelpAbout;
+
+    // New MenuItems from Sales Menu
+    @FXML private MenuItem menuItemSalesNewSale;
+    @FXML private MenuItem menuItemManageAppointments;
+
+    // New Menu and MenuItems from Reports Menu
+    @FXML private Menu menuReports;
+    @FXML private MenuItem menuItemSalesReport;
+    @FXML private MenuItem menuItemPLStatement;
+    @FXML private MenuItem menuItemExpenseReport;
+    @FXML private MenuItem menuItemInventoryValuationReport;
+    @FXML private MenuItem menuItemLowStockReport;
+    @FXML private MenuItem menuItemOutstandingPaymentsReport;
+    @FXML private MenuItem menuItemPatientPurchaseHistory;
+    @FXML private MenuItem menuItemShiftReport;
+
     //</editor-fold>
 
     //<editor-fold desc="Status Bar FXML Fields">
@@ -142,15 +158,24 @@ public class MainFrameController implements Initializable {
         if (mainBorderPane.getScene() != null) {
             AppTheme.getInstance().applyCurrentTheme(mainBorderPane.getScene());
         } else {
-            logger.warn("Scene was null when trying to apply theme in setServicesAndLoadInitialData.");
+            // Scene might not be available immediately if this is called too early.
+            // Consider applying theme in initialize or after scene is definitely set.
+            mainBorderPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+                if (newScene != null) {
+                    AppTheme.getInstance().applyCurrentTheme(newScene);
+                }
+            });
+            logger.warn("Scene was null when trying to apply theme in setServicesAndLoadInitialData. Added listener.");
         }
 
         LocaleManager.addLocaleChangeListener((oldLocale, newLocale) -> {
             logger.info("Locale changed from {} to {}, refreshing UI.", oldLocale, newLocale);
-            refreshMenuTexts();
-            reloadScene();
+            updateNodeOrientations(newLocale);
+            refreshMenuTexts(); // Refresh texts before reloading scene for them to be picked up by FXML loader
+            reloadScene(); // Reloading the scene will re-initialize controllers and FXMLs with new resource bundle
         });
 
+        updateNodeOrientations(LocaleManager.getCurrentLocale());
         refreshMenuTexts(); // Initial text setup
         updateShiftStatusDisplayAndControls();
         logger.info("MainFrameController services set and initial data loaded.");
@@ -160,12 +185,39 @@ public class MainFrameController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         logger.info("MainFrameController FXML components initialized.");
+        // Set initial node orientation based on current locale
+        updateNodeOrientations(LocaleManager.getCurrentLocale());
+
         pauseShiftButton.setVisible(false); pauseShiftButton.setManaged(false);
         resumeShiftButton.setVisible(false); resumeShiftButton.setManaged(false);
     }
 
+    private void updateNodeOrientations(Locale locale) {
+        if (mainBorderPane == null || menuBar == null || statusBar == null || mainContentArea == null) {
+            logger.warn("Attempted to update node orientations before FXML components were fully initialized.");
+            return;
+        }
+        if (LocaleManager.ARABIC.equals(locale)) {
+            mainBorderPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            menuBar.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            statusBar.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            mainContentArea.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+        } else {
+            mainBorderPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            menuBar.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            statusBar.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            mainContentArea.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+        }
+        logger.debug("Node orientations updated for locale: {}", locale);
+    }
+
     private void refreshMenuTexts() {
         ResourceBundle bundle = MessageProvider.getBundle();
+        // Ensure FXML elements are injected before trying to set text
+        if (menuFile == null) {
+            logger.warn("refreshMenuTexts called before FXML injection complete. Skipping.");
+            return;
+        }
         menuFile.setText(bundle.getString("menu.file"));
         menuFileLanguage.setText(bundle.getString("menu.file.language"));
         menuItemEnglish.setText(bundle.getString("menu.file.language.english"));
@@ -193,19 +245,35 @@ public class MainFrameController implements Initializable {
         viewUserManualMenuItem.setText(bundle.getString("menu.help.viewUserManual"));
         menuHelpAbout.setText(bundle.getString("menu.help.about"));
 
+        // Refresh texts for new Sales menu items
+        if (menuItemSalesNewSale != null) menuItemSalesNewSale.setText(bundle.getString("menu.sales.newSale"));
+        if (menuItemManageAppointments != null) menuItemManageAppointments.setText(bundle.getString("menu.sales.manageAppointments"));
+
+        // Refresh texts for new Reports menu and items
+        if (menuReports != null) menuReports.setText(bundle.getString("menu.reports"));
+        if (menuItemSalesReport != null) menuItemSalesReport.setText(bundle.getString("menu.reports.sales"));
+        if (menuItemPLStatement != null) menuItemPLStatement.setText(bundle.getString("menu.reports.plStatement"));
+        if (menuItemExpenseReport != null) menuItemExpenseReport.setText(bundle.getString("menu.reports.expense"));
+        if (menuItemInventoryValuationReport != null) menuItemInventoryValuationReport.setText(bundle.getString("menu.reports.inventoryValuation"));
+        if (menuItemLowStockReport != null) menuItemLowStockReport.setText(bundle.getString("menu.reports.lowStock"));
+        if (menuItemOutstandingPaymentsReport != null) menuItemOutstandingPaymentsReport.setText(bundle.getString("menu.reports.outstandingPayments"));
+        if (menuItemPatientPurchaseHistory != null) menuItemPatientPurchaseHistory.setText(bundle.getString("menu.reports.patientPurchaseHistory"));
+        if (menuItemShiftReport != null) menuItemShiftReport.setText(bundle.getString("menu.reports.shift"));
+
+
         if(welcomeLabel != null) welcomeLabel.setText(bundle.getString("label.welcomeToBasariatPOS"));
         if(startShiftButton != null) startShiftButton.setText(bundle.getString("mainframe.button.startShift"));
         if(pauseShiftButton != null) pauseShiftButton.setText(bundle.getString("mainframe.button.pauseShift"));
         if(resumeShiftButton != null) resumeShiftButton.setText(bundle.getString("mainframe.button.resumeShift"));
 
-        if(shiftStatusLabel != null) shiftStatusLabel.setText(bundle.getString("label.shiftStatusNotActive"));
+        if(shiftStatusLabel != null) shiftStatusLabel.setText(bundle.getString("label.shiftStatusNotActive")); // Default text
         logger.debug("Menu and UI texts refreshed for locale: {}", LocaleManager.getCurrentLocale());
     }
 
     public void updateShiftStatusDisplayAndControls() {
         if (userSessionService == null || shiftService == null || shiftStatusLabel == null || startShiftButton == null || pauseShiftButton == null || resumeShiftButton == null) {
             logger.warn("Services or FXML elements for shift status are not yet initialized. Skipping update.");
-            if(shiftStatusLabel != null) shiftStatusLabel.setText(MessageProvider.getString("label.shiftStatusLoading"));
+            if(shiftStatusLabel != null && MessageProvider.getBundle() != null) shiftStatusLabel.setText(MessageProvider.getString("label.shiftStatusLoading"));
             if(startShiftButton != null) startShiftButton.setDisable(true);
             if(pauseShiftButton != null) {pauseShiftButton.setDisable(true); pauseShiftButton.setVisible(false); pauseShiftButton.setManaged(false);}
             if(resumeShiftButton != null) {resumeShiftButton.setDisable(true); resumeShiftButton.setVisible(false); resumeShiftButton.setManaged(false);}
@@ -608,6 +676,7 @@ public class MainFrameController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.initOwner(getStage());
+        alert.getDialogPane().setNodeOrientation(mainBorderPane.getNodeOrientation()); // Apply RTL/LTR to dialog
         alert.showAndWait();
     }
 
@@ -617,6 +686,7 @@ public class MainFrameController implements Initializable {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.initOwner(getStage());
+        alert.getDialogPane().setNodeOrientation(mainBorderPane.getNodeOrientation()); // Apply RTL/LTR to dialog
         alert.showAndWait();
     }
 
@@ -626,6 +696,63 @@ public class MainFrameController implements Initializable {
         }
         logger.warn("Could not get stage from mainBorderPane.");
         return null;
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Placeholder Action Handlers for New MenuItems">
+    @FXML private void handleNewSalesOrderAction(ActionEvent event) {
+        logger.info("New Sales Order action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "New Sales Order functionality not yet implemented.");
+        // Example of loading a view:
+        // loadViewIntoCenter("/com/basariatpos/ui/view/NewSalesOrderView.fxml", "newsalesorder.title", (NewSalesOrderController c) -> { /* init controller */ });
+    }
+
+    @FXML private void handleManageAppointmentsAction(ActionEvent event) {
+        logger.info("Manage Appointments action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Manage Appointments functionality not yet implemented.");
+        // loadViewIntoCenter("/com/basariatpos/ui/view/AppointmentManagementView.fxml", "appointmentmanagement.title", (AppointmentManagementController c) -> { /* init controller */ });
+    }
+
+    @FXML private void handleSalesReportAction(ActionEvent event) {
+        logger.info("Sales Report action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Sales Report functionality not yet implemented.");
+    }
+
+    @FXML private void handlePLStatementAction(ActionEvent event) {
+        logger.info("P&L Statement action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "P&L Statement functionality not yet implemented.");
+    }
+
+    @FXML private void handleExpenseReportAction(ActionEvent event) {
+        logger.info("Expense Report action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Expense Report functionality not yet implemented.");
+    }
+
+    @FXML private void handleInventoryValuationReportAction(ActionEvent event) {
+        logger.info("Inventory Valuation Report action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Inventory Valuation Report functionality not yet implemented.");
+    }
+
+    @FXML private void handleLowStockReportAction(ActionEvent event) {
+        logger.info("Low Stock Report action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Low Stock Report functionality not yet implemented.");
+    }
+
+    @FXML private void handleOutstandingPaymentsReportAction(ActionEvent event) {
+        logger.info("Outstanding Payments Report action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Outstanding Payments Report functionality not yet implemented.");
+    }
+
+    @FXML private void handlePatientPurchaseHistoryAction(ActionEvent event) {
+        logger.info("Patient Purchase History action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Patient Purchase History functionality not yet implemented.");
+    }
+
+    @FXML private void handleShiftReportAction(ActionEvent event) {
+        logger.info("Shift Report action triggered (placeholder).");
+        showGenericInfoAlert("Placeholder", "Shift Report functionality not yet implemented.");
+        // This one likely opens a dialog or a dedicated view.
+        // Example: loadViewIntoCenter("/com/basariatpos/ui/view/ShiftReportChooserView.fxml", "shiftreport.title", (controller) -> {});
     }
     //</editor-fold>
 }

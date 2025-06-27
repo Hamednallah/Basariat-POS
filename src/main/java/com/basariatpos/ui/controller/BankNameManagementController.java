@@ -44,24 +44,26 @@ public class BankNameManagementController implements Initializable {
     @FXML private Button addButton;
     @FXML private Button editButton;
     @FXML private Button toggleActiveButton;
+    @FXML private BorderPane bankNameManagementRootPane; // For RTL
 
     private BankNameService bankNameService;
     private final ObservableList<BankNameDTO> bankNameObservableList = FXCollections.observableArrayList();
+    private Stage currentStage;
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Assuming BankNameService is available via AppLauncher or a DI mechanism
-        this.bankNameService = AppLauncher.getBankNameService(); // Requires getBankNameService in AppLauncher
+        this.bankNameService = AppLauncher.getBankNameService();
         if (this.bankNameService == null) {
             logger.error("BankNameService is null. Cannot perform operations.");
             showErrorAlert("Critical Error", "Bank Name Service is not available.");
-            // Disable UI elements if service is crucial
-            addButton.setDisable(true);
-            editButton.setDisable(true);
-            toggleActiveButton.setDisable(true);
+            if (addButton != null) addButton.setDisable(true);
+            if (editButton != null) editButton.setDisable(true);
+            if (toggleActiveButton != null) toggleActiveButton.setDisable(true);
             return;
         }
 
+        updateNodeOrientation();
         setupTableColumns();
         loadBankNames();
 
@@ -71,6 +73,24 @@ public class BankNameManagementController implements Initializable {
             toggleActiveButton.setDisable(!itemSelected);
         });
         logger.info("BankNameManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+         // Update node orientation if stage is set after initialize (e.g. view loaded into main frame)
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (bankNameManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                bankNameManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                bankNameManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("bankNameManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     // Setter for service if needed by AppLauncher or other setup mechanism

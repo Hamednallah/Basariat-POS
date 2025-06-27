@@ -58,6 +58,7 @@ public class PurchaseOrderFormController {
     @FXML private Button savePOButton;
     @FXML private Button cancelButton;
     @FXML private Label grandTotalLabel;
+    @FXML private BorderPane poFormRootPane; // For RTL
 
     private final DecimalFormat currencyFormatter = new DecimalFormat("#,##0.00");
 
@@ -81,6 +82,7 @@ public class PurchaseOrderFormController {
         this.userSessionService = userSessionService;
         this.dialogStage = stage;
 
+        updateNodeOrientation();
         loadAvailableInventoryItems();
         setupItemTableColumns();
         setupStatusComboBox();
@@ -89,8 +91,8 @@ public class PurchaseOrderFormController {
             this.currentPO = orderToEdit; // This should be the fully detailed DTO
             this.isEditMode = true;
             dialogTitleLabel.setText(MessageProvider.getString("po.dialog.edit.title"));
-            poIdLabel.setVisible(true);
-            poIdValueLabel.setVisible(true);
+            if(poIdLabel!=null) poIdLabel.setVisible(true); // Null check for safety if FXML changes
+            if(poIdValueLabel!=null) poIdValueLabel.setVisible(true);
             populateFormFields();
         } else {
             this.currentPO = new PurchaseOrderDTO(); // For new PO
@@ -98,13 +100,28 @@ public class PurchaseOrderFormController {
             dialogTitleLabel.setText(MessageProvider.getString("po.dialog.add.title"));
             orderDateField.setValue(LocalDate.now());
             statusComboBox.setValue("Pending"); // Default status
-            poIdLabel.setVisible(false);
-            poIdValueLabel.setVisible(false);
+            if(poIdLabel!=null) poIdLabel.setVisible(false);
+            if(poIdValueLabel!=null) poIdValueLabel.setVisible(false);
         }
         poItemsTable.setItems(poItemsList);
         updateGrandTotal();
 
         removeItemButton.disableProperty().bind(poItemsTable.getSelectionModel().selectedItemProperty().isNull());
+    }
+
+    private void updateNodeOrientation() {
+        if (poFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                poFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                poFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("poFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+         if (dialogStage != null && dialogStage.getScene() != null && poFormRootPane != null) {
+             dialogStage.getScene().setNodeOrientation(poFormRootPane.getNodeOrientation());
+        }
     }
 
     private void loadAvailableInventoryItems() {

@@ -33,9 +33,12 @@ public class AppSettingsManagementController implements Initializable {
     @FXML private TableColumn<ApplicationSettingDTO, String> keyColumn;
     @FXML private TableColumn<ApplicationSettingDTO, String> valueColumn;
     @FXML private TableColumn<ApplicationSettingDTO, String> descriptionColumn;
+    @FXML private BorderPane appSettingsManagementRootPane; // For RTL
 
     private ApplicationSettingsService applicationSettingsService;
     private final ObservableList<ApplicationSettingDTO> settingsObservableList = FXCollections.observableArrayList();
+    private Stage currentStage;
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -43,12 +46,32 @@ public class AppSettingsManagementController implements Initializable {
         if (this.applicationSettingsService == null) {
             logger.error("ApplicationSettingsService is null. Cannot perform operations.");
             showErrorAlert("Critical Error", "Application Settings Service is not available.", null);
+            // No specific buttons to disable here as editing is inline.
+            // Table might just appear empty or show an error.
             return;
         }
 
+        updateNodeOrientation();
         setupTableColumns();
         loadSettings();
         logger.info("AppSettingsManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (appSettingsManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                appSettingsManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                appSettingsManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("appSettingsManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setApplicationSettingsService(ApplicationSettingsService service) {

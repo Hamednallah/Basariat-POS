@@ -43,9 +43,12 @@ public class ProductCategoryManagementController implements Initializable {
     @FXML private Button addButton;
     @FXML private Button editButton;
     @FXML private Button deleteButton;
+    @FXML private BorderPane productCategoryManagementRootPane; // For RTL
 
     private ProductCategoryService productCategoryService;
     private final ObservableList<ProductCategoryDTO> categoryObservableList = FXCollections.observableArrayList();
+    private Stage currentStage;
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -53,12 +56,13 @@ public class ProductCategoryManagementController implements Initializable {
         if (this.productCategoryService == null) {
             logger.error("ProductCategoryService is null. Cannot perform operations.");
             showErrorAlert("Critical Error", "Product Category Service is not available.");
-            addButton.setDisable(true);
-            editButton.setDisable(true);
-            deleteButton.setDisable(true);
+            if(addButton!=null) addButton.setDisable(true);
+            if(editButton!=null) editButton.setDisable(true);
+            if(deleteButton!=null) deleteButton.setDisable(true);
             return;
         }
 
+        updateNodeOrientation();
         setupTableColumns();
         loadCategories();
 
@@ -68,6 +72,23 @@ public class ProductCategoryManagementController implements Initializable {
             deleteButton.setDisable(!itemSelected);
         });
         logger.info("ProductCategoryManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (productCategoryManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                productCategoryManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                productCategoryManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("productCategoryManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setProductCategoryService(ProductCategoryService productCategoryService) {

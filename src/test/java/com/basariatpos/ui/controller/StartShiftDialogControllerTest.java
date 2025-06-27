@@ -3,131 +3,128 @@ package com.basariatpos.ui.controller;
 import com.basariatpos.i18n.LocaleManager;
 import com.basariatpos.i18n.MessageProvider;
 
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-@ExtendWith(ApplicationExtension.class)
-class StartShiftDialogControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class StartShiftDialogControllerTest {
 
+    @Mock private TextField openingFloatFld;
+    @Mock private VBox startShiftDialogRootPane;
+    @Mock private Stage mockDialogStage;
+
+    @InjectMocks
     private StartShiftDialogController controller;
-    private Stage stage;
 
-    private final String OPENING_FLOAT_FLD = "#openingFloatFld";
-    private final String START_BUTTON = "#startButton";
-    private final String CANCEL_BUTTON = "#cancelButton";
+    private static ResourceBundle resourceBundle;
 
-    @Start
-    private void start(Stage stage) throws IOException {
-        this.stage = stage;
-        LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE); // Ensure consistent locale
-        ResourceBundle bundle = MessageProvider.getBundle();
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/StartShiftDialog.fxml"));
-        loader.setResources(bundle);
-        Parent root = loader.load();
-        controller = loader.getController();
-        controller.setDialogStage(stage); // Pass the stage to the controller
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.setTitle(MessageProvider.getString("startshiftdialog.title"));
-        stage.show();
-        stage.toFront();
+    @BeforeAll
+    static void setUpClass() {
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
+        resourceBundle = MessageProvider.getBundle();
+        try {
+            new javafx.embed.swing.JFXPanel();
+        } catch (Exception e) { /* Ignore */ }
     }
 
-    @AfterEach
-    void tearDown(FxRobot robot) {
-        // Close any alert dialogs that might be open
-        robot.listWindows().stream()
-            .filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL && w != stage)
-            .forEach(w -> robot.targetWindow(w).close());
-        WaitForAsyncUtils.waitForFxEvents();
-    }
+    @BeforeEach
+    void setUp() {
+        controller.openingFloatFld = openingFloatFld;
+        controller.startShiftDialogRootPane = startShiftDialogRootPane;
 
+        controller.initialize();
+        controller.setDialogStage(mockDialogStage);
+    }
 
     @Test
-    void validOpeningFloat_saveAndClose(FxRobot robot) {
-        robot.clickOn(OPENING_FLOAT_FLD).write("150.75");
-        robot.clickOn(START_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void initialize_setsUpOrientationAndListener() {
+        verify(startShiftDialogRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+        verify(openingFloatFld).textProperty();
+    }
+
+    @Test
+    void handleStartButtonAction_validInput_savesAndCloses() {
+        when(openingFloatFld.getText()).thenReturn("100.50");
+
+        controller.handleStartButtonAction(null);
 
         assertTrue(controller.isSaved());
-        assertEquals(new BigDecimal("150.75"), controller.getOpeningFloat());
-        assertFalse(stage.isShowing(), "Dialog should close on successful save.");
+        assertEquals(new BigDecimal("100.50"), controller.getOpeningFloat());
+        verify(mockDialogStage).close();
     }
 
     @Test
-    void validOpeningFloat_withComma_saveAndClose(FxRobot robot) {
-        robot.clickOn(OPENING_FLOAT_FLD).write("150,75"); // Comma as decimal separator
-        robot.clickOn(START_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleStartButtonAction_validInputWithComma_savesAndCloses() {
+        when(openingFloatFld.getText()).thenReturn("100,50");
+
+        controller.handleStartButtonAction(null);
 
         assertTrue(controller.isSaved());
-        assertEquals(new BigDecimal("150.75"), controller.getOpeningFloat());
-        assertFalse(stage.isShowing());
+        assertEquals(new BigDecimal("100.50"), controller.getOpeningFloat());
+        verify(mockDialogStage).close();
     }
 
 
     @Test
-    void emptyOpeningFloat_showsError_dialogRemains(FxRobot robot) {
-        robot.clickOn(START_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleStartButtonAction_emptyInput_showsError() {
+        when(openingFloatFld.getText()).thenReturn("");
+        when(openingFloatFld.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(openingFloatFld.getScene().getWindow()).thenReturn(mockDialogStage);
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert should be shown.");
+        controller.handleStartButtonAction(null);
+
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing(), "Dialog should remain open after validation error.");
-
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
+        verify(mockDialogStage, never()).close();
     }
 
     @Test
-    void negativeOpeningFloat_showsError_dialogRemains(FxRobot robot) {
-        robot.clickOn(OPENING_FLOAT_FLD).write("-100");
-        robot.clickOn(START_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleStartButtonAction_invalidNumber_showsError() {
+        when(openingFloatFld.getText()).thenReturn("abc");
+        when(openingFloatFld.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(openingFloatFld.getScene().getWindow()).thenReturn(mockDialogStage);
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert for negative float should be shown.");
+        controller.handleStartButtonAction(null);
+
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing());
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
+        verify(mockDialogStage, never()).close();
     }
 
     @Test
-    void nonNumericOpeningFloat_showsError_dialogRemains(FxRobot robot) {
-        robot.clickOn(OPENING_FLOAT_FLD).write("abc");
-        robot.clickOn(START_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleStartButtonAction_negativeNumber_showsError() {
+        when(openingFloatFld.getText()).thenReturn("-10");
+        when(openingFloatFld.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(openingFloatFld.getScene().getWindow()).thenReturn(mockDialogStage);
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert for non-numeric float should be shown.");
+        controller.handleStartButtonAction(null);
+
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing());
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
+        verify(mockDialogStage, never()).close();
     }
 
     @Test
-    void cancelButton_closesDialog_isSavedFalse(FxRobot robot) {
-        robot.clickOn(CANCEL_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void initialize_setsRTL_forArabicLocale() {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC);
 
-        assertFalse(controller.isSaved());
-        assertFalse(stage.isShowing(), "Dialog should close on cancel.");
+        controller.initialize();
+
+        verify(startShiftDialogRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
     }
 }

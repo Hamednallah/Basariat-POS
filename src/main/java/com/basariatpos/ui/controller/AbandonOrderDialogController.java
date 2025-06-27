@@ -41,6 +41,7 @@ public class AbandonOrderDialogController {
     @FXML private TableColumn<SalesOrderItemWrapper, Boolean> restockItemColumn;
     @FXML private Button confirmButton;
     @FXML private Button cancelButton;
+    @FXML private BorderPane abandonOrderDialogPane; // For RTL
 
     private SalesOrderService salesOrderService;
     private Stage dialogStage;
@@ -116,7 +117,24 @@ public class AbandonOrderDialogController {
             }
         }
         itemsTable.setItems(itemWrappers);
+        updateNodeOrientation();
     }
+
+    private void updateNodeOrientation() {
+        if (abandonOrderDialogPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                abandonOrderDialogPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                abandonOrderDialogPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("abandonOrderDialogPane is null. Cannot set RTL/LTR orientation.");
+        }
+        if (dialogStage != null && dialogStage.getScene() != null && abandonOrderDialogPane != null) {
+             dialogStage.getScene().setNodeOrientation(abandonOrderDialogPane.getNodeOrientation());
+        }
+    }
+
 
     @FXML
     void handleConfirmAbandonmentButtonAction(ActionEvent event) {

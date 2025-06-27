@@ -35,6 +35,7 @@ public class StockAdjustmentDialogController {
     @FXML private TextArea otherReasonArea;
     @FXML private Button submitButton;
     @FXML private Button cancelButton;
+    @FXML private VBox stockAdjustmentRootPane; // For RTL
 
     private Stage dialogStage;
     private InventoryItemService itemService;
@@ -72,7 +73,25 @@ public class StockAdjustmentDialogController {
 
         // Numeric input formatter for adjustment quantity
         applyIntegerFormatter(adjustmentQuantityField);
+        updateNodeOrientation();
     }
+
+    private void updateNodeOrientation() {
+        if (stockAdjustmentRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                stockAdjustmentRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                stockAdjustmentRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("stockAdjustmentRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+        // Ensure dialog scene itself respects this too when setDialogStage is called
+        if (dialogStage != null && dialogStage.getScene() != null && stockAdjustmentRootPane != null) {
+             dialogStage.getScene().setNodeOrientation(stockAdjustmentRootPane.getNodeOrientation());
+        }
+    }
+
 
     private void applyIntegerFormatter(TextField field) {
         UnaryOperator<TextFormatter.Change> filter = change -> {

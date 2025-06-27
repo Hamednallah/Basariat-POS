@@ -14,10 +14,10 @@
 
 <BorderPane fx:id="mainBorderPane" prefHeight="768.0" prefWidth="1366.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.MainFrameController">
     <stylesheets>
-        <String fx:value="@styles.css" />
+        <String fx:value="@../style/basariat-pos.css" />
     </stylesheets>
     <top>
-        <MenuBar fx:id="menuBar" BorderPane.alignment="CENTER">
+        <MenuBar fx:id="menuBar" styleClass="menu-bar" BorderPane.alignment="CENTER">
             <menus>
                 <Menu fx:id="menuFile" mnemonicParsing="false" text="%menu.file">
                     <items>
@@ -38,9 +38,10 @@
                 </Menu>
                 <Menu fx:id="menuSales" mnemonicParsing="false" text="%menu.sales">
                     <items>
+                        <MenuItem fx:id="menuItemSalesNewSale" mnemonicParsing="false" text="%menu.sales.newSale" onAction="#handleNewSalesOrderAction"/>
                         <MenuItem fx:id="menuItemSalesOrderList" mnemonicParsing="false" text="%salesorder.list.title" onAction="#handleSalesOrderListAction" />
-                        <!-- Placeholder for New Sale if it was a direct menu item -->
-                        <!-- <MenuItem fx:id="menuItemSalesNewSale" mnemonicParsing="false" text="%menu.sales.newSale" onAction="#handleSalesNewSaleAction"/> -->
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="menuItemManageAppointments" mnemonicParsing="false" text="%menu.sales.manageAppointments" onAction="#handleManageAppointmentsAction" />
                     </items>
                 </Menu>
                 <Menu fx:id="menuInventory" mnemonicParsing="false" text="%menu.inventory">
@@ -64,6 +65,19 @@
                         <MenuItem fx:id="viewAuditLogsMenuItem" mnemonicParsing="false" text="%menu.admin.viewAuditLogs" onAction="#handleViewAuditLogsAction" />
                     </items>
                 </Menu>
+                <Menu fx:id="menuReports" mnemonicParsing="false" text="%menu.reports">
+                    <items>
+                        <MenuItem fx:id="menuItemSalesReport" mnemonicParsing="false" text="%menu.reports.sales" onAction="#handleSalesReportAction" />
+                        <MenuItem fx:id="menuItemPLStatement" mnemonicParsing="false" text="%menu.reports.plStatement" onAction="#handlePLStatementAction" />
+                        <MenuItem fx:id="menuItemExpenseReport" mnemonicParsing="false" text="%menu.reports.expense" onAction="#handleExpenseReportAction" />
+                        <MenuItem fx:id="menuItemInventoryValuationReport" mnemonicParsing="false" text="%menu.reports.inventoryValuation" onAction="#handleInventoryValuationReportAction" />
+                        <MenuItem fx:id="menuItemLowStockReport" mnemonicParsing="false" text="%menu.reports.lowStock" onAction="#handleLowStockReportAction" />
+                        <MenuItem fx:id="menuItemOutstandingPaymentsReport" mnemonicParsing="false" text="%menu.reports.outstandingPayments" onAction="#handleOutstandingPaymentsReportAction" />
+                        <MenuItem fx:id="menuItemPatientPurchaseHistory" mnemonicParsing="false" text="%menu.reports.patientPurchaseHistory" onAction="#handlePatientPurchaseHistoryAction" />
+                        <SeparatorMenuItem mnemonicParsing="false" />
+                        <MenuItem fx:id="menuItemShiftReport" mnemonicParsing="false" text="%menu.reports.shift" onAction="#handleShiftReportAction" />
+                    </items>
+                </Menu>
                 <Menu fx:id="menuHelp" mnemonicParsing="false" text="%menu.help">
                     <items>
                         <MenuItem fx:id="viewUserManualMenuItem" mnemonicParsing="false" text="%menu.help.viewUserManual" onAction="#handleViewUserManual" />
@@ -75,9 +89,9 @@
         </MenuBar>
     </top>
     <center>
-        <StackPane fx:id="mainContentArea" BorderPane.alignment="CENTER">
+        <StackPane fx:id="mainContentArea" styleClass="main-content-area" BorderPane.alignment="CENTER">
             <children>
-                <Label fx:id="welcomeLabel" text="%label.welcomeToBasariatPOS" />
+                <Label fx:id="welcomeLabel" styleClass="welcome-label" text="%label.welcomeToBasariatPOS" />
             </children>
         </StackPane>
     </center>

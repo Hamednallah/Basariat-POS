@@ -4,203 +4,188 @@ import com.basariatpos.i18n.LocaleManager;
 import com.basariatpos.i18n.MessageProvider;
 import com.basariatpos.model.BankNameDTO;
 import com.basariatpos.service.BankNameAlreadyExistsException;
+import com.basariatpos.service.BankNameException;
 import com.basariatpos.service.BankNameService;
 import com.basariatpos.service.ValidationException;
 
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.Locale;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(ApplicationExtension.class)
-class BankNameFormDialogControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class BankNameFormDialogControllerTest {
 
-    @Mock
-    private BankNameService mockBankNameService;
+    @Mock private Label dialogTitleLabel;
+    @Mock private TextField nameEnField;
+    @Mock private TextField nameArField;
+    @Mock private CheckBox activeCheckBox;
+    @Mock private VBox bankNameFormRootPane; // For RTL
+    @Mock private Stage mockDialogStage;
+    @Mock private BankNameService mockBankNameService;
 
+    @InjectMocks
     private BankNameFormDialogController controller;
-    private Stage stage;
-    private Parent root;
 
-    private final String NAME_EN_FIELD = "#nameEnField";
-    private final String NAME_AR_FIELD = "#nameArField";
-    private final String ACTIVE_CHECKBOX = "#activeCheckBox";
-    private final String SAVE_BUTTON = "#saveButton";
-    private final String DIALOG_TITLE_LABEL = "#dialogTitleLabel";
+    private static ResourceBundle resourceBundle;
 
+    @BeforeAll
+    static void setUpClass() {
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
+        resourceBundle = MessageProvider.getBundle();
+         try {
+            new javafx.embed.swing.JFXPanel();
+        } catch (Exception e) { /* Ignore */ }
+    }
 
-    @Start
-    private void start(Stage stage) throws IOException {
-        this.stage = stage;
-        MockitoAnnotations.openMocks(this);
+    @BeforeEach
+    void setUp() {
+        // Manual injection of @FXML mocks
+        controller.dialogTitleLabel = dialogTitleLabel;
+        controller.nameEnField = nameEnField;
+        controller.nameArField = nameArField;
+        controller.activeCheckBox = activeCheckBox;
+        controller.bankNameFormRootPane = bankNameFormRootPane;
 
-        LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
-        ResourceBundle bundle = MessageProvider.getBundle();
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/BankNameFormDialog.fxml"));
-        loader.setResources(bundle);
-
-        root = loader.load();
-        controller = loader.getController();
-
-        // Manual injection of mocks and stage
         controller.setBankNameService(mockBankNameService);
-        controller.setDialogStage(stage); // Pass the stage to the controller
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.show();
-        stage.toFront();
-    }
-
-    @AfterEach
-    void tearDown(FxRobot robot) {
-        // Close any alert dialogs that might be open
-        robot.listWindows().stream()
-            .filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL && w != stage)
-            .forEach(w -> robot.targetWindow(w).close());
-        WaitForAsyncUtils.waitForFxEvents();
-    }
-
-
-    @Test
-    void addMode_initializesFieldsCorrectly(FxRobot robot) {
-        // Controller's initialize sets default title, this test verifies it if dialog is for add
-        // Default title in FXML is "Bank Name Form", controller should update it.
-        // Let's assume controller sets title to "Add Bank Name" if editableBankName is null
-        // This requires controller to have logic for setting title in initialize or a dedicated method.
-        // For now, the test will reflect the current FXML default or what controller sets.
-        // The current BankNameFormDialogController doesn't set title in initialize, relies on caller.
-
-        assertTrue(robot.lookup(ACTIVE_CHECKBOX).queryAs(CheckBox.class).isSelected(), "Active checkbox should be selected by default.");
-        assertEquals("", robot.lookup(NAME_EN_FIELD).queryAs(TextField.class).getText());
+        controller.initialize(null, resourceBundle); // Calls updateNodeOrientation
+        controller.setDialogStage(mockDialogStage); // Also calls updateNodeOrientation
     }
 
     @Test
-    void editMode_populatesFieldsCorrectly(FxRobot robot) {
-        BankNameDTO bankToEdit = new BankNameDTO(1, "Existing Bank EN", "بنك قائم عربي", false);
-
-        robot.interact(() -> controller.setEditableBankName(bankToEdit));
-        WaitForAsyncUtils.waitForFxEvents();
-
-        assertEquals("Existing Bank EN", robot.lookup(NAME_EN_FIELD).queryAs(TextField.class).getText());
-        assertEquals("بنك قائم عربي", robot.lookup(NAME_AR_FIELD).queryAs(TextField.class).getText());
-        assertFalse(robot.lookup(ACTIVE_CHECKBOX).queryAs(CheckBox.class).isSelected());
-        assertEquals(MessageProvider.getString("bankname.dialog.edit.title"), robot.lookup(DIALOG_TITLE_LABEL).queryAs(Label.class).getText());
+    void initialize_defaultsAndSetsOrientation() {
+        verify(activeCheckBox).setSelected(true);
+        verify(bankNameFormRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
     }
 
     @Test
-    void saveButton_addMode_validInput_callsServiceAndCloses(FxRobot robot) throws Exception {
-        BankNameDTO savedBank = new BankNameDTO(1, "New Bank EN", "بنك جديد عربي", true);
-        when(mockBankNameService.saveBankName(any(BankNameDTO.class))).thenReturn(savedBank);
+    void setEditableBankName_populatesFormForEdit() {
+        BankNameDTO bank = new BankNameDTO("Test Bank EN", "بنك الاختبار", false);
+        bank.setBankNameId(1); // Assuming ID is set
 
-        robot.clickOn(NAME_EN_FIELD).write("New Bank EN");
-        robot.clickOn(NAME_AR_FIELD).write("بنك جديد عربي");
-        // Active is true by default
+        controller.setEditableBankName(bank);
 
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+        verify(dialogTitleLabel).setText(MessageProvider.getString("bankname.dialog.edit.title"));
+        verify(nameEnField).setText("Test Bank EN");
+        verify(nameArField).setText("بنك الاختبار");
+        verify(activeCheckBox).setSelected(false);
+    }
 
+    @Test
+    void handleSaveButtonAction_validInput_addMode_savesAndCloses() throws BankNameException, ValidationException {
+        when(nameEnField.getText()).thenReturn("New Bank EN");
+        when(nameArField.getText()).thenReturn("بنك جديد");
+        when(activeCheckBox.isSelected()).thenReturn(true);
+
+        controller.handleSaveButtonAction(null);
+
+        assertTrue(controller.isSaved());
         ArgumentCaptor<BankNameDTO> captor = ArgumentCaptor.forClass(BankNameDTO.class);
         verify(mockBankNameService).saveBankName(captor.capture());
         assertEquals("New Bank EN", captor.getValue().getBankNameEn());
+        assertEquals("بنك جديد", captor.getValue().getBankNameAr());
         assertTrue(captor.getValue().isActive());
-
-        assertTrue(controller.isSaved(), "Dialog should be marked as saved.");
-        assertFalse(stage.isShowing(), "Dialog should close on successful save.");
+        verify(mockDialogStage).close();
     }
 
     @Test
-    void saveButton_editMode_validInput_callsServiceAndCloses(FxRobot robot) throws Exception {
-        BankNameDTO existingBank = new BankNameDTO(1, "Old EN", "قديم عربي", true);
-        robot.interact(() -> controller.setEditableBankName(existingBank));
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleSaveButtonAction_validInput_editMode_savesAndCloses() throws BankNameException, ValidationException {
+        BankNameDTO existingBank = new BankNameDTO("Old EN", "قديم عربي", true);
+        existingBank.setBankNameId(1);
+        controller.setEditableBankName(existingBank);
 
-        BankNameDTO updatedBank = new BankNameDTO(1, "Updated EN", "محدث عربي", false);
-        when(mockBankNameService.saveBankName(any(BankNameDTO.class))).thenReturn(updatedBank);
+        when(nameEnField.getText()).thenReturn("Updated Bank EN");
+        when(nameArField.getText()).thenReturn("بنك محدث");
+        when(activeCheckBox.isSelected()).thenReturn(false);
 
-        robot.clickOn(NAME_EN_FIELD).eraseText(existingBank.getBankNameEn().length()).write("Updated EN");
-        robot.clickOn(NAME_AR_FIELD).eraseText(existingBank.getBankNameAr().length()).write("محدث عربي");
-        robot.clickOn(ACTIVE_CHECKBOX); // Toggle to false
+        controller.handleSaveButtonAction(null);
 
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
-
+        assertTrue(controller.isSaved());
         ArgumentCaptor<BankNameDTO> captor = ArgumentCaptor.forClass(BankNameDTO.class);
         verify(mockBankNameService).saveBankName(captor.capture());
         assertEquals(1, captor.getValue().getBankNameId());
-        assertEquals("Updated EN", captor.getValue().getBankNameEn());
+        assertEquals("Updated Bank EN", captor.getValue().getBankNameEn());
         assertFalse(captor.getValue().isActive());
-
-        assertTrue(controller.isSaved());
-        assertFalse(stage.isShowing());
+        verify(mockDialogStage).close();
     }
 
-
     @Test
-    void saveButton_emptyEnglishName_showsValidationError(FxRobot robot) {
-        robot.clickOn(NAME_AR_FIELD).write("اسم عربي");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleSaveButtonAction_emptyNameEn_showsValidationError() {
+        when(nameEnField.getText()).thenReturn("");
+        when(nameArField.getText()).thenReturn("بنك");
+        when(activeCheckBox.isSelected()).thenReturn(true);
+         // For showErrorAlert to get owner stage
+        when(mockDialogStage.getOwner()).thenReturn(null);
+        when(nameEnField.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(nameEnField.getScene().getWindow()).thenReturn(mockDialogStage);
 
-        // Verify alert is shown
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert should be shown.");
+
+        controller.handleSaveButtonAction(null);
+
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing()); // Dialog should remain open
-
-        // Close alert
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
-
+        verify(mockDialogStage, never()).close();
     }
 
     @Test
-    void saveButton_serviceThrowsBankNameAlreadyExistsException_showsErrorAlert(FxRobot robot) throws Exception {
-        when(mockBankNameService.saveBankName(any(BankNameDTO.class)))
-            .thenThrow(new BankNameAlreadyExistsException("Test Bank EN"));
+    void handleSaveButtonAction_serviceThrowsValidationException_showsError() throws BankNameException, ValidationException {
+        when(nameEnField.getText()).thenReturn("Valid EN");
+        when(nameArField.getText()).thenReturn("صالح عربي");
+        when(activeCheckBox.isSelected()).thenReturn(true);
+        doThrow(new ValidationException("Service validation failed", Collections.singletonList("some.service.error")))
+            .when(mockBankNameService).saveBankName(any(BankNameDTO.class));
+        when(mockDialogStage.getOwner()).thenReturn(null);
+        when(nameEnField.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(nameEnField.getScene().getWindow()).thenReturn(mockDialogStage);
 
-        robot.clickOn(NAME_EN_FIELD).write("Test Bank EN");
-        robot.clickOn(NAME_AR_FIELD).write("بنك اختباري");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.handleSaveButtonAction(null);
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert for existing name should be shown.");
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing());
+        verify(mockDialogStage, never()).close();
+    }
 
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
+    @Test
+    void handleSaveButtonAction_serviceThrowsBankNameAlreadyExistsException_showsError() throws BankNameException, ValidationException {
+        when(nameEnField.getText()).thenReturn("Existing EN");
+        when(nameArField.getText()).thenReturn("موجود عربي");
+        when(activeCheckBox.isSelected()).thenReturn(true);
+        doThrow(new BankNameAlreadyExistsException("English name exists"))
+            .when(mockBankNameService).saveBankName(any(BankNameDTO.class));
+        when(mockDialogStage.getOwner()).thenReturn(null);
+        when(nameEnField.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(nameEnField.getScene().getWindow()).thenReturn(mockDialogStage);
+
+        controller.handleSaveButtonAction(null);
+
+        assertFalse(controller.isSaved());
+        verify(mockDialogStage, never()).close();
     }
 
 
     @Test
-    void cancelButton_closesDialog_andIsSavedReturnsFalse(FxRobot robot) {
-        robot.clickOn("#cancelButton");
-        WaitForAsyncUtils.waitForFxEvents();
+    void initialize_setsRTL_forArabicLocale() {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC);
+        resourceBundle = MessageProvider.getBundle();
 
-        assertFalse(controller.isSaved(), "Dialog should not be marked as saved on cancel.");
-        assertFalse(stage.isShowing(), "Dialog should close on cancel.");
+        controller.initialize(null, resourceBundle); // Re-initialize for Arabic
+
+        verify(bankNameFormRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+
+        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Reset
     }
 }

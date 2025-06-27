@@ -14,15 +14,14 @@
 <?import javafx.scene.layout.VBox?>
 <?import java.lang.String?>
 
-<AnchorPane prefHeight="600.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.CenterProfileSetupController">
+<AnchorPane fx:id="rootPane" prefHeight="600.0" prefWidth="700.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.CenterProfileSetupController">
     <stylesheets>
-        <String fx:value="@styles.css" />
-        <!-- Or specific wizard styles: <String fx:value="@wizardStyles.css" /> -->
+        <String fx:value="@../style/basariat-pos.css" />
     </stylesheets>
     <children>
         <ScrollPane fitToWidth="true" fitToHeight="true" AnchorPane.bottomAnchor="60.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
             <content>
-                <VBox spacing="15" styleClass="form-container">
+                <VBox spacing="15" styleClass="form-container" fx:id="formVBox"> <!-- Added fx:id to VBox for potential RTL styling if needed -->
                     <padding>
                         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
                     </padding>
@@ -36,52 +35,52 @@
                             </columnConstraints>
 
                             <Label text="%wizard.centerprofile.centerName" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="form-label-required"/>
-                            <TextField fx:id="centerNameField" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                            <TextField fx:id="centerNameField" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.addressLine1" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="addressLine1Field" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                            <TextField fx:id="addressLine1Field" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.addressLine2" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="addressLine2Field" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                            <TextField fx:id="addressLine2Field" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.city" GridPane.rowIndex="3" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="cityField" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+                            <TextField fx:id="cityField" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.country" GridPane.rowIndex="4" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="countryField" GridPane.rowIndex="4" GridPane.columnIndex="1" />
+                            <TextField fx:id="countryField" GridPane.rowIndex="4" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.postalCode" GridPane.rowIndex="5" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="postalCodeField" GridPane.rowIndex="5" GridPane.columnIndex="1" />
+                            <TextField fx:id="postalCodeField" GridPane.rowIndex="5" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.phonePrimary" GridPane.rowIndex="6" GridPane.columnIndex="0" styleClass="form-label-required"/>
-                            <TextField fx:id="phonePrimaryField" GridPane.rowIndex="6" GridPane.columnIndex="1" />
+                            <TextField fx:id="phonePrimaryField" GridPane.rowIndex="6" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.phoneSecondary" GridPane.rowIndex="7" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="phoneSecondaryField" GridPane.rowIndex="7" GridPane.columnIndex="1" />
+                            <TextField fx:id="phoneSecondaryField" GridPane.rowIndex="7" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.emailAddress" GridPane.rowIndex="8" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="emailAddressField" GridPane.rowIndex="8" GridPane.columnIndex="1" />
+                            <TextField fx:id="emailAddressField" GridPane.rowIndex="8" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.website" GridPane.rowIndex="9" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="websiteField" GridPane.rowIndex="9" GridPane.columnIndex="1" />
+                            <TextField fx:id="websiteField" GridPane.rowIndex="9" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.logoImagePath" GridPane.rowIndex="10" GridPane.columnIndex="0" styleClass="form-label"/>
                             <HBox spacing="5" GridPane.rowIndex="10" GridPane.columnIndex="1">
-                                <TextField fx:id="logoImagePathField" HBox.hgrow="ALWAYS" editable="false" />
-                                <Button fx:id="browseLogoButton" text="%wizard.button.browse" onAction="#handleBrowseLogo" styleClass="form-button-secondary"/>
+                                <TextField fx:id="logoImagePathField" HBox.hgrow="ALWAYS" editable="false" styleClass="form-input"/>
+                                <Button fx:id="browseLogoButton" text="%wizard.button.browse" onAction="#handleBrowseLogo" styleClass="button"/> <!-- Standard button style -->
                             </HBox>
 
                             <Label text="%wizard.centerprofile.taxIdentifier" GridPane.rowIndex="11" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextField fx:id="taxIdentifierField" GridPane.rowIndex="11" GridPane.columnIndex="1" />
+                            <TextField fx:id="taxIdentifierField" GridPane.rowIndex="11" GridPane.columnIndex="1" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.currencySymbol" GridPane.rowIndex="12" GridPane.columnIndex="0" styleClass="form-label-required"/>
-                            <TextField fx:id="currencySymbolField" GridPane.rowIndex="12" GridPane.columnIndex="1" prefWidth="50.0" maxWidth="100.0"/>
+                            <TextField fx:id="currencySymbolField" GridPane.rowIndex="12" GridPane.columnIndex="1" prefWidth="50.0" maxWidth="100.0" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.currencyCode" GridPane.rowIndex="13" GridPane.columnIndex="0" styleClass="form-label-required"/>
-                            <TextField fx:id="currencyCodeField" GridPane.rowIndex="13" GridPane.columnIndex="1" prefWidth="80.0" maxWidth="120.0"/>
+                            <TextField fx:id="currencyCodeField" GridPane.rowIndex="13" GridPane.columnIndex="1" prefWidth="80.0" maxWidth="120.0" styleClass="form-input"/>
 
                             <Label text="%wizard.centerprofile.receiptFooterMessage" GridPane.rowIndex="14" GridPane.columnIndex="0" styleClass="form-label"/>
-                            <TextArea fx:id="receiptFooterMessageArea" GridPane.rowIndex="14" GridPane.columnIndex="1" prefHeight="60.0" wrapText="true"/>
+                            <TextArea fx:id="receiptFooterMessageArea" GridPane.rowIndex="14" GridPane.columnIndex="1" prefHeight="60.0" wrapText="true" styleClass="form-input"/>
 
                             <!-- Add RowConstraints if needed for specific row sizing -->
                             <RowConstraints minHeight="30.0" vgrow="SOMETIMES" />

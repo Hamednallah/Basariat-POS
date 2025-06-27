@@ -22,6 +22,7 @@ public class InterruptedShiftDialogController {
     @FXML private Button resumeButton;
     @FXML private Button forciblyEndButton;
     @FXML private Button logoutButton;
+    @FXML private VBox interruptedShiftDialogRootPane; // For RTL
 
     private Stage dialogStage;
     private InterruptedShiftAction result = InterruptedShiftAction.CANCEL; // Default to cancel/logout
@@ -54,7 +55,25 @@ public class InterruptedShiftDialogController {
             resumeButton.setDisable(true);
             forciblyEndButton.setDisable(true);
         }
+        updateNodeOrientation();
     }
+
+    private void updateNodeOrientation() {
+        if (interruptedShiftDialogRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                interruptedShiftDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                interruptedShiftDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+             // Ensure the message label itself aligns correctly if it's multi-line
+            if (messageLabel != null) {
+                 messageLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER); // Keep centered, but overall VBox handles RTL flow
+            }
+        } else {
+            logger.warn("interruptedShiftDialogRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+    }
+
 
     @FXML
     private void handleResumeButtonAction(ActionEvent event) {

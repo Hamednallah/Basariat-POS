@@ -44,9 +44,12 @@ public class ExpenseCategoryManagementController implements Initializable {
     @FXML private Button addButton;
     @FXML private Button editButton;
     @FXML private Button toggleActiveButton;
+    @FXML private BorderPane expenseCategoryManagementRootPane; // For RTL
 
     private ExpenseCategoryService expenseCategoryService;
     private final ObservableList<ExpenseCategoryDTO> categoryObservableList = FXCollections.observableArrayList();
+    private Stage currentStage;
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -54,21 +57,40 @@ public class ExpenseCategoryManagementController implements Initializable {
         if (this.expenseCategoryService == null) {
             logger.error("ExpenseCategoryService is null. Cannot perform operations.");
             showErrorAlert("Critical Error", "Expense Category Service is not available.");
-            addButton.setDisable(true);
-            editButton.setDisable(true);
-            toggleActiveButton.setDisable(true);
+            if(addButton!=null) addButton.setDisable(true);
+            if(editButton!=null) editButton.setDisable(true);
+            if(toggleActiveButton!=null) toggleActiveButton.setDisable(true);
             return;
         }
 
+        updateNodeOrientation();
         setupTableColumns();
         loadCategories();
 
         categoriesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             boolean itemSelected = newSelection != null;
             editButton.setDisable(!itemSelected);
+            // Disable toggle for protected categories (e.g., "Loss on Abandoned Orders")
             toggleActiveButton.setDisable(!itemSelected || (newSelection != null && expenseCategoryService.isProtectedCategory(newSelection)));
         });
         logger.info("ExpenseCategoryManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (expenseCategoryManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                expenseCategoryManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                expenseCategoryManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("expenseCategoryManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setExpenseCategoryService(ExpenseCategoryService expenseCategoryService) {

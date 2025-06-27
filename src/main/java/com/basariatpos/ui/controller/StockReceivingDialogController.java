@@ -43,6 +43,7 @@ public class StockReceivingDialogController {
 
     @FXML private Button confirmReceptionButton;
     @FXML private Button cancelButton;
+    @FXML private BorderPane stockReceivingDialogRootPane; // For RTL
 
     private Stage dialogStage;
     private PurchaseOrderService poService;
@@ -68,6 +69,22 @@ public class StockReceivingDialogController {
                   .collect(Collectors.toList())
         );
         itemsToReceiveTable.setItems(itemsToReceiveList);
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (stockReceivingDialogRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                stockReceivingDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                stockReceivingDialogRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("stockReceivingDialogRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+        if (dialogStage != null && dialogStage.getScene() != null && stockReceivingDialogRootPane != null) {
+             dialogStage.getScene().setNodeOrientation(stockReceivingDialogRootPane.getNodeOrientation());
+        }
     }
 
     private void setupTableColumns() {

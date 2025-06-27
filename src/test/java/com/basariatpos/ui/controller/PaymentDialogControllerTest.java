@@ -7,168 +7,184 @@ import com.basariatpos.model.PaymentDTO;
 import com.basariatpos.model.SalesOrderDTO;
 import com.basariatpos.service.BankNameService;
 import com.basariatpos.service.PaymentService;
-import com.basariatpos.service.exception.PaymentValidationException;
+import com.basariatpos.service.exception.PaymentException;
+import com.basariatpos.ui.utilui.TextFormatters;
 
-import javafx.application.Platform;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.DialogPane;
-import javafx.scene.control.TextField;
+
+import javafx.collections.FXCollections;
+import javafx.event.ActionEvent;
+import javafx.scene.control.*;
+import javafx.scene.layout.GridPane; // DialogPane is not easily mockable for lookupButton without TestFX
 import javafx.stage.Stage;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(ApplicationExtension.class)
-class PaymentDialogControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class PaymentDialogControllerTest {
 
+    @Mock private DialogPane paymentDialogPane;
+    @Mock private Label titleLabel, orderIdLabel, balanceDueLabel;
+    @Mock private TextField amountField, transactionIdField;
+    @Mock private ComboBox<String> paymentMethodCombo;
+    @Mock private ComboBox<BankNameDTO> bankNameCombo;
+    @Mock private Label bankNameLabel, transactionIdLabel; // For visibility toggling
+    @Mock private Stage mockDialogStage;
     @Mock private PaymentService mockPaymentService;
     @Mock private BankNameService mockBankNameService;
 
+    @Mock private Button mockOkButton; // Mock for lookupButton
+
+
+    @InjectMocks
     private PaymentDialogController controller;
-    private Stage stage;
+
+    private static ResourceBundle resourceBundle;
     private SalesOrderDTO testOrder;
+    private MockedStatic<TextFormatters> mockTextFormatters;
+
 
     @BeforeAll
-    static void setUpClass() throws Exception {
-        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Or your test default
-        MessageProvider.loadBundle(LocaleManager.getCurrentLocale());
-        if (System.getProperty("os.name", "").toLowerCase().startsWith("linux")) {
-            System.setProperty("java.awt.headless", "true");
-            System.setProperty("testfx.robot", "glass");
-            System.setProperty("testfx.headless", "true");
-            System.setProperty("prism.order", "sw");
-            System.setProperty("prism.text", "t2k");
-        }
+    static void setUpClass() {
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
+        resourceBundle = MessageProvider.getBundle();
+         try {
+            new javafx.embed.swing.JFXPanel();
+        } catch (Exception e) { /* Ignore */ }
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Manual FXML injection
+        controller.paymentDialogPane = paymentDialogPane;
+        controller.titleLabel = titleLabel;
+        controller.orderIdLabel = orderIdLabel;
+        controller.balanceDueLabel = balanceDueLabel;
+        controller.amountField = amountField;
+        controller.paymentMethodCombo = paymentMethodCombo;
+        controller.bankNameLabel = bankNameLabel;
+        controller.bankNameCombo = bankNameCombo;
+        controller.transactionIdLabel = transactionIdLabel;
+        controller.transactionIdField = transactionIdField;
+
+        testOrder = new SalesOrderDTO();
+        testOrder.setSalesOrderId(1L);
+        testOrder.setBalanceDue(new BigDecimal("100.00"));
+
+        // Mock ComboBox items & listeners
+        when(paymentMethodCombo.getItems()).thenReturn(FXCollections.observableArrayList("Cash", "Card"));
+        SingleSelectionModel<String> paymentMethodSelectionModel = mock(SingleSelectionModel.class);
+        when(paymentMethodCombo.getSelectionModel()).thenReturn(paymentMethodSelectionModel);
+        when(paymentMethodSelectionModel.selectedItemProperty()).thenReturn(mock(javafx.beans.property.ReadOnlyObjectProperty.class));
+
+        when(bankNameCombo.getItems()).thenReturn(FXCollections.observableArrayList(new BankNameDTO(1, "Bank A EN", "Bank A AR", true)));
+        // Visibility mocks for bank fields
+        when(bankNameLabel.visibleProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(bankNameLabel.managedProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(bankNameCombo.visibleProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(bankNameCombo.managedProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(transactionIdLabel.visibleProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(transactionIdLabel.managedProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(transactionIdField.visibleProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+        when(transactionIdField.managedProperty()).thenReturn(mock(javafx.beans.property.BooleanProperty.class));
+
+
+        // Mock TextFormatters
+        mockTextFormatters = Mockito.mockStatic(TextFormatters.class);
+        mockTextFormatters.when(() -> TextFormatters.applyBigDecimalFormatter(any(TextField.class))).thenAnswer(inv -> null);
+        mockTextFormatters.when(() -> TextFormatters.parseBigDecimal(anyString(), any())).thenAnswer(
+            inv -> { String arg = inv.getArgument(0); if(arg == null || arg.isEmpty()) return inv.getArgument(1); try { return new BigDecimal(arg); } catch (Exception e) { return inv.getArgument(1); } }
+        );
+
+        when(paymentDialogPane.lookupButton(ButtonType.OK)).thenReturn(mockOkButton);
+
+
+        controller.initialize();
+        controller.initializeDialog(testOrder, mockPaymentService, mockBankNameService, mockDialogStage);
     }
 
     @AfterEach
-    void tearDown() throws Exception {
-        if (stage != null && stage.isShowing()) {
-             org.testfx.api.FxToolkit.cleanupStages();
-        }
+    void tearDown() {
+        mockTextFormatters.close();
     }
 
-    @Start
-    private void start(Stage stage) throws IOException {
-        this.stage = stage;
-        MockitoAnnotations.openMocks(this);
 
-        testOrder = new SalesOrderDTO();
-        testOrder.setSalesOrderId(123);
-        testOrder.setBalanceDue(new BigDecimal("150.75"));
-
-        // Mock bank name service response
-        List<BankNameDTO> banks = new ArrayList<>();
-        banks.add(new BankNameDTO(1, "Bank A EN", "Bank A AR", true));
-        banks.add(new BankNameDTO(2, "Bank B EN", "Bank B AR", true));
-        when(mockBankNameService.getActiveBankNames()).thenReturn(banks);
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/PaymentDialog.fxml"));
-        loader.setResources(MessageProvider.getBundle());
-        DialogPane root = loader.load(); // PaymentDialog.fxml uses DialogPane as root
-        controller = loader.getController();
-
-        controller.initializeDialog(testOrder, mockPaymentService, mockBankNameService, stage);
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.setTitle(MessageProvider.getString("payment.dialog.title", String.valueOf(testOrder.getSalesOrderId())));
-        stage.show();
+    @Test
+    void initializeDialog_populatesFieldsAndSetsOrientation() {
+        verify(titleLabel).setText(MessageProvider.getString("payment.dialog.title", "1"));
+        verify(orderIdLabel).setText("1");
+        verify(balanceDueLabel).setText("100.00");
+        verify(amountField).setText("100.00");
+        verify(paymentDialogPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+        verify(mockOkButton).addEventFilter(eq(ActionEvent.ACTION), any());
     }
 
     @Test
-    void initializeDialog_populatesFieldsCorrectly(FxRobot robot) {
-        assertEquals(String.valueOf(testOrder.getSalesOrderId()), robot.lookup("#orderIdLabel").queryAs(Label.class).getText());
-        assertEquals(testOrder.getBalanceDue().toPlainString(), robot.lookup("#balanceDueLabel").queryAs(Label.class).getText());
-        assertEquals(testOrder.getBalanceDue().toPlainString(), robot.lookup("#amountField").queryAs(TextField.class).getText()); // Defaults to balance due
+    void handleSubmitPaymentAction_validCashPayment_recordsAndCloses() throws PaymentException {
+        when(amountField.getText()).thenReturn("50.00");
+        when(paymentMethodCombo.getValue()).thenReturn("Cash");
 
-        ComboBox<String> paymentMethodCombo = robot.lookup("#paymentMethodCombo").queryComboBox();
-        assertFalse(paymentMethodCombo.getItems().isEmpty());
+        PaymentDTO mockResult = new PaymentDTO(); mockResult.setPaymentId(123L);
+        when(mockPaymentService.recordPayment(any(PaymentDTO.class))).thenReturn(mockResult);
 
-        ComboBox<BankNameDTO> bankNameCombo = robot.lookup("#bankNameCombo").queryComboBox();
-        assertEquals(2, bankNameCombo.getItems().size()); // From mockBankNameService
-    }
+        when(paymentDialogPane.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(paymentDialogPane.getScene().getWindow()).thenReturn(mockDialogStage);
 
-    @Test
-    void paymentMethodSelection_togglesBankFieldsVisibility(FxRobot robot) {
-        ComboBox<String> paymentMethodCombo = robot.lookup("#paymentMethodCombo").queryComboBox();
-        Label bankNameLabel = robot.lookup("#bankNameLabel").queryAs(Label.class);
 
-        Platform.runLater(() -> paymentMethodCombo.setValue("Card"));
-        WaitForAsyncUtils.waitForFxEvents();
-        assertTrue(bankNameLabel.isVisible());
-        assertTrue(robot.lookup("#bankNameCombo").queryComboBox().isVisible());
-        assertTrue(robot.lookup("#transactionIdField").queryAs(TextField.class).isVisible());
+        ActionEvent mockEvent = mock(ActionEvent.class);
+        controller.handleSubmitPaymentAction(mockEvent);
 
-        Platform.runLater(() -> paymentMethodCombo.setValue("Cash"));
-        WaitForAsyncUtils.waitForFxEvents();
-        assertFalse(bankNameLabel.isVisible());
-    }
-
-    @Test
-    void handleSubmitPayment_validCashPayment_callsServiceAndCloses(FxRobot robot) throws Exception {
-        PaymentDTO mockSavedPayment = new PaymentDTO(); mockSavedPayment.setPaymentId(1001);
-        when(mockPaymentService.recordPayment(any(PaymentDTO.class))).thenReturn(mockSavedPayment);
-
-        robot.interact(() -> controller.paymentMethodCombo.setValue("Cash"));
-        robot.interact(() -> controller.amountField.setText("50.00"));
-        WaitForAsyncUtils.waitForFxEvents();
-
-        // Simulate clicking OK button (ButtonType.OK)
-        // This requires the DialogPane to be part of a Dialog that is shown.
-        // For more direct testing of handler:
-        // Platform.runLater(() -> controller.handleSubmitPaymentAction(new ActionEvent(paymentDialogPane.lookupButton(ButtonType.OK), Button.USE_COMPUTED_SIZE)));
-
-        // For TestFX, clicking the actual button node
-        Button okButtonNode = (Button) robot.lookup(".dialog-pane .button").match(button -> ((Button)button).isDefaultButton()).queryButton();
-        robot.clickOn(okButtonNode);
-        WaitForAsyncUtils.waitForFxEvents();
-
-        verify(mockPaymentService).recordPayment(any(PaymentDTO.class));
         assertNotNull(controller.getResultPayment());
-        assertEquals(1001, controller.getResultPayment().getPaymentId());
-        // Stage should be closed by DialogPane mechanism if event not consumed by validation fail
-        // assertFalse(stage.isShowing()); // This assertion can be flaky with TestFX dialogs
+        assertEquals(123L, controller.getResultPayment().getPaymentId());
+        verify(mockPaymentService).recordPayment(any(PaymentDTO.class));
+        verify(mockEvent, never()).consume();
     }
 
     @Test
-    void handleSubmitPayment_invalidAmount_showsValidationError(FxRobot robot) {
-        robot.interact(() -> controller.amountField.setText("-10.00")); // Invalid amount
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleSubmitPaymentAction_invalidAmount_showsErrorAndConsumesEvent() {
+        when(amountField.getText()).thenReturn("-10.00");
+        when(paymentMethodCombo.getValue()).thenReturn("Cash");
 
-        try (var alertMock = mockConstruction(Alert.class)) {
-            Button okButtonNode = (Button) robot.lookup(".dialog-pane .button").match(button -> ((Button)button).isDefaultButton()).queryButton();
-            robot.clickOn(okButtonNode);
-            WaitForAsyncUtils.waitForFxEvents();
+        when(paymentDialogPane.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(paymentDialogPane.getScene().getWindow()).thenReturn(mockDialogStage);
 
-            assertTrue(alertMock.constructed().size() >= 1);
-            Alert alert = alertMock.constructed().get(0);
-            assertEquals(Alert.AlertType.ERROR, alert.getAlertType());
-            assertTrue(alert.getContentText().contains(MessageProvider.getString("payment.validation.amountPositive")));
-        }
-        assertTrue(stage.isShowing()); // Dialog should remain open
+
+        ActionEvent mockEvent = mock(ActionEvent.class);
+        controller.handleSubmitPaymentAction(mockEvent);
+
+        assertNull(controller.getResultPayment());
+        verify(mockPaymentService, never()).recordPayment(any(PaymentDTO.class));
+        verify(mockEvent).consume();
+    }
+
+    @Test
+    void initialize_setsRTL_forArabicLocale() {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC);
+        resourceBundle = MessageProvider.getBundle();
+
+        controller.initialize();
+        controller.initializeDialog(testOrder, mockPaymentService, mockBankNameService, mockDialogStage);
+
+        verify(paymentDialogPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
     }
 }

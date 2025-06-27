@@ -22,14 +22,36 @@ public class ResetPasswordDialogController {
     @FXML private PasswordField confirmNewPasswordField;
     @FXML private Button savePasswordButton;
     @FXML private Button cancelPasswordButton;
+    @FXML private VBox resetPasswordRootPane; // For RTL
 
     private Stage dialogStage;
     private boolean passwordSaved = false;
     private String newPassword;
 
+    // It's good practice for Initializable to be implemented if @FXML is used,
+    // even if initialize() method is empty, or for future use.
+    // For now, we'll add node orientation logic directly in setDialogStage or a dedicated method.
+
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        updateNodeOrientation(); // Call when stage is available
+         if (this.dialogStage != null && resetPasswordRootPane != null) {
+            this.dialogStage.getScene().setNodeOrientation(resetPasswordRootPane.getNodeOrientation());
+        }
     }
+
+    private void updateNodeOrientation() {
+        if (resetPasswordRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                resetPasswordRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                resetPasswordRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("resetPasswordRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+    }
+
 
     @FXML
     private void handleSavePasswordButtonAction(ActionEvent event) {

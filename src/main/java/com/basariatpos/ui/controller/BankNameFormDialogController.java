@@ -34,6 +34,7 @@ public class BankNameFormDialogController implements Initializable {
     @FXML private CheckBox activeCheckBox;
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox bankNameFormRootPane; // For RTL
 
     private Stage dialogStage;
     private BankNameService bankNameService;
@@ -44,10 +45,30 @@ public class BankNameFormDialogController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         activeCheckBox.setSelected(true); // Default for new bank name
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (bankNameFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                bankNameFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+                // nameArField might already have nodeOrientation="RIGHT_TO_LEFT" in FXML, which is good.
+                // If not, it could be set here too, or ensure text-input fields generally respect parent orientation.
+            } else {
+                bankNameFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("bankNameFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        // Ensure orientation is set when stage becomes available, if initialize was too early
+        updateNodeOrientation();
+        if (this.dialogStage != null && bankNameFormRootPane != null && this.dialogStage.getScene() != null) {
+            this.dialogStage.getScene().setNodeOrientation(bankNameFormRootPane.getNodeOrientation());
+        }
     }
 
     public void setBankNameService(BankNameService bankNameService) {

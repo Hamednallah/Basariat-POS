@@ -52,6 +52,9 @@ public class CenterProfileSetupController implements Initializable {
     // Labels that might need manual text setting if not using %key in FXML for them
     // For this FXML, all labels use %key, so direct @FXML for labels is not strictly needed
     // unless we want to manipulate them beyond text (e.g., visibility).
+    @FXML private javafx.scene.layout.AnchorPane rootPane; // For RTL
+    @FXML private javafx.scene.layout.VBox formVBox; // For RTL, if specific child needs it
+
 
     // Assuming CenterProfileService will be injected by a DI framework or manually instantiated.
     // For Sprint 0, manual instantiation is acceptable if no DI framework is set up.
@@ -59,14 +62,24 @@ public class CenterProfileSetupController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // Manually instantiate dependencies if no DI framework.
-        // This should ideally be configured via a DI framework like Spring or Guice.
-        // For now, newing it up here or passing via a constructor/setter from the main app.
-        // centerProfileService = new CenterProfileService(new CenterProfileRepositoryImpl()); // Example
         logger.info("CenterProfileSetupController initialized with locale: {}", LocaleManager.getCurrentLocale());
-        // Set texts for any elements not handled by FXML %key or if specific logic is needed
-        // e.g. saveButton.setText(MessageProvider.getString("wizard.button.save"));
-        // FXML should handle this via %wizard.button.save, but good to be aware.
+
+        // Set node orientation based on current locale
+        if (rootPane != null) { // Ensure rootPane is injected
+            if (LocaleManager.ARABIC.equals(LocaleManager.getCurrentLocale())) {
+                rootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                rootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("rootPane is null in CenterProfileSetupController.initialize(). RTL/LTR might not be set correctly.");
+        }
+        // Example for a specific child if needed, though AnchorPane should propagate
+        // if (formVBox != null) {
+        //     formVBox.setNodeOrientation(LocaleManager.ARABIC.equals(LocaleManager.getCurrentLocale()) ?
+        //             javafx.scene.NodeOrientation.RIGHT_TO_LEFT : javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+        // }
+
 
         loadExistingProfileData();
     }

@@ -40,6 +40,7 @@ public class LoginController implements Initializable {
     @FXML private Button loginButton;
     @FXML private ComboBox<Locale> languageComboBox;
     @FXML private Label errorMessageLabel;
+    @FXML private javafx.scene.layout.VBox rootLoginPane; // For RTL support
 
     private UserService userService;
     private UserSessionService userSessionService;
@@ -68,7 +69,21 @@ public class LoginController implements Initializable {
         // Set focus on username field initially
         Platform.runLater(() -> usernameField.requestFocus());
 
+        updateNodeOrientation();
+
         logger.info("LoginController initialized. Current locale: {}", LocaleManager.getCurrentLocale().toLanguageTag());
+    }
+
+    private void updateNodeOrientation() {
+        if (rootLoginPane != null) {
+            if (LocaleManager.ARABIC.equals(LocaleManager.getCurrentLocale())) {
+                rootLoginPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                rootLoginPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("rootLoginPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void setupLanguageComboBox() {
@@ -150,9 +165,24 @@ public class LoginController implements Initializable {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/LoginView.fxml"));
             loader.setResources(MessageProvider.getBundle()); // Get new bundle for the selected locale
             Parent root = loader.load();
+
+            // Access controller after loading to set orientation if needed, or ensure FXML root has fx:id
+            // LoginController newControllerInstance = loader.getController();
+            // newControllerInstance.updateNodeOrientation(); // if controller needs to do it post-load
+
             Scene scene = new Scene(root);
             stage.setScene(scene);
             stage.setTitle(MessageProvider.getString("app.title.login")); // Update title too
+
+            // Explicitly update orientation of the new root if it's not handled by its own controller's initialize
+            if (root instanceof javafx.scene.layout.VBox) { // Assuming root is VBox as per FXML
+                 if (LocaleManager.ARABIC.equals(LocaleManager.getCurrentLocale())) {
+                    root.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+                } else {
+                    root.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+                }
+            }
+
             logger.info("Login scene reloaded for locale: {}", LocaleManager.getCurrentLocale().toLanguageTag());
         } catch (IOException e) {
             logger.error("Failed to reload LoginView.fxml after locale change.", e);

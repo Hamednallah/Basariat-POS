@@ -49,10 +49,13 @@ public class ProductManagementController implements Initializable {
     @FXML private Button addProductButton;
     @FXML private Button editProductButton;
     @FXML private Button deleteProductButton;
+    @FXML private BorderPane productManagementRootPane; // For RTL
 
     private ProductService productService;
     private ProductCategoryService productCategoryService; // For populating category ComboBox in dialog
     private final ObservableList<ProductDTO> productObservableList = FXCollections.observableArrayList();
+    private Stage currentStage;
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -62,16 +65,16 @@ public class ProductManagementController implements Initializable {
         if (this.productService == null || this.productCategoryService == null) {
             logger.error("ProductService or ProductCategoryService is null. Cannot perform operations.");
             showErrorAlert("Critical Error", "Product services are not available.");
-            // Disable UI elements
-            searchField.setDisable(true);
-            searchButton.setDisable(true);
-            clearSearchButton.setDisable(true);
-            addProductButton.setDisable(true);
-            editProductButton.setDisable(true);
-            deleteProductButton.setDisable(true);
+            if(searchField!=null) searchField.setDisable(true);
+            if(searchButton!=null) searchButton.setDisable(true);
+            if(clearSearchButton!=null) clearSearchButton.setDisable(true);
+            if(addProductButton!=null) addProductButton.setDisable(true);
+            if(editProductButton!=null) editProductButton.setDisable(true);
+            if(deleteProductButton!=null) deleteProductButton.setDisable(true);
             return;
         }
 
+        updateNodeOrientation();
         setupTableColumns();
         loadInitialTableData();
 
@@ -87,6 +90,23 @@ public class ProductManagementController implements Initializable {
             }
         });
         logger.info("ProductManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) { // If needed for dialog ownership by MainFrame
+        this.currentStage = stage;
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (productManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                productManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                productManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("productManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     // Setter for services if needed for external initialization or testing

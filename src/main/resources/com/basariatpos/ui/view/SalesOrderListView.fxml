@@ -12,8 +12,12 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
+<?import java.lang.String?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.SalesOrderListController">
+<BorderPane fx:id="salesOrderListRootPane" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.SalesOrderListController">
+    <stylesheets>
+        <String fx:value="@../style/basariat-pos.css" />
+    </stylesheets>
     <top>
         <VBox>
             <ToolBar styleClass="filter-toolbar">

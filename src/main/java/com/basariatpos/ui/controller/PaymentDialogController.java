@@ -62,10 +62,24 @@ public class PaymentDialogController {
         });
 
         bankNameCombo.setConverter(new StringConverter<BankNameDTO>() {
-            @Override public String toString(BankNameDTO bank) { return bank == null ? null : bank.getNameEn(); }
-            @Override public BankNameDTO fromString(String string) { return null; } // Not needed for selection only
+            @Override public String toString(BankNameDTO bank) { return bank == null ? null : (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale()) ? bank.getNameAr() : bank.getNameEn()); }
+            @Override public BankNameDTO fromString(String string) { return null; }
         });
+        updateNodeOrientation();
     }
+
+    private void updateNodeOrientation() {
+        if (paymentDialogPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                paymentDialogPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                paymentDialogPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("paymentDialogPane is null. Cannot set RTL/LTR orientation.");
+        }
+    }
+
 
     public void initializeDialog(SalesOrderDTO order, PaymentService paymentService,
                                  BankNameService bankNameService, Stage stage) {
@@ -73,6 +87,8 @@ public class PaymentDialogController {
         this.paymentService = paymentService;
         this.bankNameService = bankNameService;
         this.dialogStage = stage;
+
+        updateNodeOrientation(); // Ensure orientation when dialog is fully set up
 
         titleLabel.setText(MessageProvider.getString("payment.dialog.title", String.valueOf(order.getSalesOrderId())));
         orderIdLabel.setText(String.valueOf(order.getSalesOrderId()));

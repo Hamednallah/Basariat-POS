@@ -57,13 +57,12 @@ public class OpticalDiagnosticFormDialogController {
     private int currentPatientId; // Required for adding new diagnostic
     private boolean isEditMode = false;
     private boolean saved = false;
+    @FXML private VBox diagnosticFormRootPane; // For RTL
 
     private NumberFormat numberFormat;
 
 
     public void initialize() { // Called by FXML loader
-        // Using US locale for number format to ensure dot as decimal separator internally
-        // UI display can be localized if needed, but BigDecimal parsing is safer with consistent format.
         numberFormat = NumberFormat.getNumberInstance(Locale.US);
         if (numberFormat instanceof DecimalFormat) {
             ((DecimalFormat) numberFormat).setParseBigDecimal(true);
@@ -71,9 +70,22 @@ public class OpticalDiagnosticFormDialogController {
 
         setupFieldFormatters();
 
-        // Initial state for contact lens details
         contactLensDetailsBox.visibleProperty().bind(isContactLensRxCheckBox.selectedProperty());
         contactLensDetailsBox.managedProperty().bind(isContactLensRxCheckBox.selectedProperty());
+
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (diagnosticFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                diagnosticFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                diagnosticFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("diagnosticFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void setupFieldFormatters() {

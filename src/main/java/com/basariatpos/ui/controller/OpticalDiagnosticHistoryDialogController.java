@@ -55,6 +55,7 @@ public class OpticalDiagnosticHistoryDialogController {
     @FXML private Button editDiagnosticButton;
     @FXML private Button deleteDiagnosticButton;
     @FXML private Button closeButton;
+    @FXML private BorderPane diagnosticHistoryRootPane; // For RTL
 
     private Stage dialogStage;
     private OpticalDiagnosticService diagnosticService;
@@ -74,9 +75,9 @@ public class OpticalDiagnosticHistoryDialogController {
         // The FXML title key `opticaldiagnostics.history.title` has a placeholder {0}
         // This can be set on the Stage title by the caller (PatientManagementController)
         // For the label inside the dialog:
-        patientNameLabel.setText(MessageProvider.getString("opticaldiagnostics.history.title", patientName));
+        patientNameLabel.setText(MessageProvider.getString("opticaldiagnostics.history.forPatient", patientName)); // Using a more specific key
 
-
+        updateNodeOrientation();
         setupTableColumns();
         loadDiagnostics();
 
@@ -87,6 +88,25 @@ public class OpticalDiagnosticHistoryDialogController {
         });
         logger.info("OpticalDiagnosticHistoryDialogController initialized for patient ID: {}", patientId);
     }
+
+    private void updateNodeOrientation() {
+        if (diagnosticHistoryRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                diagnosticHistoryRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                diagnosticHistoryRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("diagnosticHistoryRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+
+        // Also ensure alerts created by this dialog respect RTL/LTR
+        if (dialogStage != null && dialogStage.getScene() != null && dialogStage.getScene().getRoot() != null) {
+            // This might be too generic if alerts need specific handling, but sets a baseline
+             // For alerts created directly, their dialogPane.setNodeOrientation should be set.
+        }
+    }
+
 
     private void setupTableColumns() {
         dateColumn.setCellValueFactory(cellData ->

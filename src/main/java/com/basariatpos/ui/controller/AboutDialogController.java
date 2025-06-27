@@ -27,6 +27,7 @@ public class AboutDialogController implements Initializable {
     @FXML private Label contactDetailsText;
     @FXML private Label copyrightText;
     @FXML private Button closeButton;
+    @FXML private javafx.scene.layout.VBox aboutDialogRoot; // For RTL
 
     private AppConfigLoader appConfigLoader;
 
@@ -35,6 +36,17 @@ public class AboutDialogController implements Initializable {
         // In a DI setup, AppConfigLoader would be injected.
         // For Sprint 0, we can instantiate it directly.
         appConfigLoader = new AppConfigLoader(); // Loads "application.properties" by default
+
+        // Set node orientation
+        if (aboutDialogRoot != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                aboutDialogRoot.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                aboutDialogRoot.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("aboutDialogRoot is null in AboutDialogController.initialize(). RTL/LTR might not be set correctly.");
+        }
 
         loadAndSetTexts();
         logger.info("AboutDialogController initialized.");

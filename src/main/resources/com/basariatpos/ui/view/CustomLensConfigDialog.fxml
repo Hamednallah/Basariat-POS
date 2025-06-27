@@ -12,9 +12,13 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import java.lang.String?>
 
-<DialogPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.CustomLensConfigDialogController"
+<DialogPane fx:id="customLensDialogPane" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.CustomLensConfigDialogController"
             prefWidth="650" prefHeight="600" styleClass="dialog-pane-custom">
+    <stylesheets>
+        <String fx:value="@../style/basariat-pos.css" />
+    </stylesheets>
     <header>
         <Label styleClass="dialog-header-title" text="%customlens.dialog.title" />
     </header>

@@ -34,6 +34,7 @@ public class PatientFormDialogController { // No Initializable needed unless @FX
     @FXML private CheckBox whatsappOptInCheckBox;
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox patientFormRootPane; // For RTL
 
     private Stage dialogStage;
     private PatientService patientService;
@@ -68,6 +69,19 @@ public class PatientFormDialogController { // No Initializable needed unless @FX
             addressArea.clear();
             whatsappOptInCheckBox.setSelected(false); // Default opt-in can be true if desired
         }
+        updateNodeOrientation(); // Call after potential FXML fields are referenced
+    }
+
+    private void updateNodeOrientation() {
+        if (patientFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                patientFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                patientFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("patientFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void populateFormFields() {
@@ -85,6 +99,10 @@ public class PatientFormDialogController { // No Initializable needed unless @FX
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        updateNodeOrientation(); // Ensure orientation is set when stage is available
+        if (this.dialogStage != null && patientFormRootPane != null && this.dialogStage.getScene() != null) {
+            this.dialogStage.getScene().setNodeOrientation(patientFormRootPane.getNodeOrientation());
+        }
     }
 
     public void setPatientService(PatientService patientService) {

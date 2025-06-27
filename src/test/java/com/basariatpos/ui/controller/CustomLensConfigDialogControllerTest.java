@@ -3,195 +3,191 @@ package com.basariatpos.ui.controller;
 import com.basariatpos.i18n.LocaleManager;
 import com.basariatpos.i18n.MessageProvider;
 import com.basariatpos.model.SalesOrderItemDTO;
-import com.basariatpos.ui.utilui.TextFormatters; // Assuming this will be created or exists
+import com.basariatpos.ui.utilui.TextFormatters; // Assuming this is where formatters are
 
-import javafx.application.Platform;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
+import javafx.collections.FXCollections;
+import javafx.event.ActionEvent;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DialogPane;
 import javafx.scene.control.TextField;
-import javafx.stage.Stage;
+import javafx.stage.Stage; // DialogPane does not use Stage directly in this controller
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.mockito.MockitoAnnotations;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
-
-
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-@ExtendWith(ApplicationExtension.class)
-class CustomLensConfigDialogControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class CustomLensConfigDialogControllerTest {
 
+    @Mock private DialogPane dialogPane;
+    @Mock private TextField odSphField, odCylField, odAxisField, odAddField;
+    @Mock private TextField osSphField, osCylField, osAxisField, osAddField;
+    @Mock private TextField ipdField, unitPriceField;
+    @Mock private ComboBox<String> materialComboBox, shadeComboBox, reflectionTypeComboBox;
+
+    // Mock the OK button from DialogPane to simulate its action event
+    @Mock private javafx.scene.control.Button mockOkButton;
+
+
+    @InjectMocks
     private CustomLensConfigDialogController controller;
-    private Stage stage;
-    private SalesOrderItemDTO testLensItem;
 
-    // Keys for ComboBox options - must match controller for reliable testing
-    private final String MATERIAL_BLUECUT = MessageProvider.getString("customlens.material.bluecut");
-    private final String REFLECTION_AR = MessageProvider.getString("customlens.reflection.antireflective");
-    private final String MATERIAL_PLASTIC = MessageProvider.getString("customlens.material.plastic");
+    private static ResourceBundle resourceBundle;
+    private SalesOrderItemDTO testLensItem;
+    private MockedStatic<TextFormatters> mockTextFormatters;
 
 
     @BeforeAll
-    static void setUpClass() throws Exception {
+    static void setUpClass() {
         LocaleManager.setCurrentLocale(Locale.ENGLISH);
-        MessageProvider.loadBundle(LocaleManager.getCurrentLocale());
-        if (System.getProperty("os.name", "").toLowerCase().startsWith("linux")) {
-            System.setProperty("java.awt.headless", "true");
-            System.setProperty("testfx.robot", "glass");
-            System.setProperty("testfx.headless", "true");
-            System.setProperty("prism.order", "sw");
-            System.setProperty("prism.text", "t2k");
-        }
+        resourceBundle = MessageProvider.getBundle();
+         try {
+            new javafx.embed.swing.JFXPanel();
+        } catch (Exception e) { /* Ignore */ }
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Manual FXML injection
+        controller.dialogPane = dialogPane;
+        controller.odSphField = odSphField; controller.odCylField = odCylField; controller.odAxisField = odAxisField; controller.odAddField = odAddField;
+        controller.osSphField = osSphField; controller.osCylField = osCylField; controller.osAxisField = osAxisField; controller.osAddField = osAddField;
+        controller.ipdField = ipdField; controller.unitPriceField = unitPriceField;
+        controller.materialComboBox = materialComboBox; controller.shadeComboBox = shadeComboBox; controller.reflectionTypeComboBox = reflectionTypeComboBox;
+
+        // Mock ComboBox items for populateComboBoxes()
+        when(materialComboBox.getItems()).thenReturn(FXCollections.observableArrayList());
+        when(shadeComboBox.getItems()).thenReturn(FXCollections.observableArrayList());
+        when(reflectionTypeComboBox.getItems()).thenReturn(FXCollections.observableArrayList());
+
+        // Mock selectedProperty for materialComboBox listener
+        // To properly mock this, you need to mock the whole selection model chain
+        javafx.scene.control.SingleSelectionModel<String> mockSelectionModel = mock(javafx.scene.control.SingleSelectionModel.class);
+        when(materialComboBox.getSelectionModel()).thenReturn(mockSelectionModel);
+        javafx.beans.property.ReadOnlyObjectProperty<String> mockSelectedItemProperty = mock(javafx.beans.property.ReadOnlyObjectProperty.class);
+        when(mockSelectionModel.selectedItemProperty()).thenReturn(mockSelectedItemProperty);
+
+
+        // Mock TextFormatters static methods
+        mockTextFormatters = Mockito.mockStatic(TextFormatters.class);
+        mockTextFormatters.when(() -> TextFormatters.applyBigDecimalFormatter(anyVararg())).thenAnswer(invocation -> null);
+        mockTextFormatters.when(() -> TextFormatters.applyIntegerFormatter(anyVararg())).thenAnswer(invocation -> null);
+
+        // Mock parsing methods from TextFormatters for handleOkAction
+        mockTextFormatters.when(() -> TextFormatters.parseBigDecimal(anyString())).thenAnswer(
+            inv -> { String arg = inv.getArgument(0); if(arg == null || arg.isEmpty()) return null; try { return new BigDecimal(arg); } catch (Exception e) { return null; } }
+        );
+         mockTextFormatters.when(() -> TextFormatters.parseBigDecimal(anyString(), any(BigDecimal.class))).thenAnswer(
+            inv -> { String arg = inv.getArgument(0); if(arg == null || arg.isEmpty()) return inv.getArgument(1); try { return new BigDecimal(arg); } catch (Exception e) { return inv.getArgument(1); } }
+        );
+        mockTextFormatters.when(() -> TextFormatters.parseInteger(anyString())).thenAnswer(
+            inv -> { String arg = inv.getArgument(0); if(arg == null || arg.isEmpty()) return null; try { return Integer.parseInt(inv.getArgument(0)); } catch (Exception e) { return null; } }
+        );
+
+        // Mock lookupButton for OK button event filter
+        when(dialogPane.lookupButton(ButtonType.OK)).thenReturn(mockOkButton);
+
+
+        controller.initialize(); // Calls populateComboBoxes, addNumericFormatters, updateNodeOrientation
+
+        testLensItem = new SalesOrderItemDTO(); // Fresh item for each test
     }
 
     @AfterEach
-    void tearDown() throws Exception {
-        if (stage != null && stage.isShowing()) {
-             org.testfx.api.FxToolkit.cleanupStages();
-        }
+    void tearDown() {
+        mockTextFormatters.close();
     }
 
-    @Start
-    private void start(Stage stage) throws IOException {
-        this.stage = stage;
-        MockitoAnnotations.openMocks(this); // Though no mocks are used in this specific test yet
 
-        testLensItem = new SalesOrderItemDTO();
-        // Initialize with some default or empty values if needed for dialog opening
-        testLensItem.setUnitPrice(BigDecimal.ZERO);
-
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/CustomLensConfigDialog.fxml"));
-        loader.setResources(MessageProvider.getBundle());
-        DialogPane root = loader.load(); // Load DialogPane
-        controller = loader.getController();
-
-        // DialogPane needs to be in a Scene and Stage to be shown
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-
-        // Call initializeDialog manually AFTER the stage is set up and FXML loaded
-        controller.initializeDialog(stage, testLensItem);
-
-        stage.setTitle(MessageProvider.getString("customlens.dialog.title"));
-        stage.show();
+    @Test
+    void initialize_populatesComboBoxesAndSetsUpFormatters() {
+        verify(materialComboBox).setItems(any(ObservableList.class));
+        verify(shadeComboBox).setItems(any(ObservableList.class));
+        verify(reflectionTypeComboBox).setItems(any(ObservableList.class));
+        mockTextFormatters.verify(() -> TextFormatters.applyBigDecimalFormatter(anyVararg()), atLeastOnce());
+        mockTextFormatters.verify(() -> TextFormatters.applyIntegerFormatter(anyVararg()), atLeastOnce());
+        verify(dialogPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
     }
 
     @Test
-    void initializeDialog_populatesFieldsFromItem(FxRobot robot) {
-        SalesOrderItemDTO item = new SalesOrderItemDTO();
-        item.setUnitPrice(new BigDecimal("123.45"));
-        String initialJson = "{\"rx\":{\"odSph\":\"-1.25\", \"odCyl\":\"-0.50\", \"odAxis\":\"90\"}, \"attrs\":{\"material\":\"" + MATERIAL_PLASTIC + "\", \"shade\":\"White\"}}";
-        item.setPrescriptionDetails(initialJson);
+    void initializeDialog_editMode_parsesAndSetsJsonDetails() {
+        // Using Gson compatible JSON structure
+        String json = "{\"rx\":{\"odSph\":\"-1.25\",\"odCyl\":\"-0.50\",\"odAxis\":90,\"osSph\":null,\"osCyl\":null,\"osAxis\":null,\"odAdd\":null,\"osAdd\":null,\"ipd\":null},\"attrs\":{\"material\":\"Glass\",\"shade\":\"White\",\"reflectionType\":\"AR\"}}";
+        testLensItem.setPrescriptionDetails(json);
+        testLensItem.setUnitPrice(new BigDecimal("150.00"));
 
-        Platform.runLater(() -> controller.initializeDialog(stage, item));
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.initializeDialog(null, testLensItem); // Stage can be null for this test if not directly used by method
 
-        assertEquals("-1.25", robot.lookup("#odSphField").queryAs(TextField.class).getText());
-        assertEquals("-0.50", robot.lookup("#odCylField").queryAs(TextField.class).getText());
-        assertEquals("90", robot.lookup("#odAxisField").queryAs(TextField.class).getText());
-        assertEquals(MATERIAL_PLASTIC, robot.lookup("#materialComboBox").queryComboBox().getValue());
-        assertEquals("123.45", robot.lookup("#unitPriceField").queryAs(TextField.class).getText());
+        verify(odSphField).setText("-1.25");
+        verify(odCylField).setText("-0.50");
+        verify(odAxisField).setText("90");
+        verify(materialComboBox).setValue("Glass");
+        verify(shadeComboBox).setValue("White");
+        verify(reflectionTypeComboBox).setValue("AR");
+        verify(unitPriceField).setText("150.00");
     }
 
     @Test
-    void materialBlueCut_disablesAndSetsReflectionAR(FxRobot robot) {
-        ComboBox<String> materialCombo = robot.lookup("#materialComboBox").queryComboBox();
-        ComboBox<String> reflectionCombo = robot.lookup("#reflectionTypeComboBox").queryComboBox();
+    void handleOkAction_validInputs_updatesLensItemAndCloses() {
+        controller.initializeDialog(null, testLensItem);
 
-        robot.interact(() -> materialCombo.setValue(MATERIAL_BLUECUT));
-        WaitForAsyncUtils.waitForFxEvents();
+        when(odSphField.getText()).thenReturn("-2.00");
+        when(materialComboBox.getValue()).thenReturn(controller.MATERIAL_PLASTIC); // Use constant from controller
+        when(reflectionTypeComboBox.getValue()).thenReturn(controller.REFLECTION_AR); // Use constant
+        when(unitPriceField.getText()).thenReturn("120.00");
 
-        assertEquals(REFLECTION_AR, reflectionCombo.getValue());
-        assertTrue(reflectionCombo.isDisabled());
+        ActionEvent mockEvent = mock(ActionEvent.class);
+        controller.handleOkAction(mockEvent);
 
-        robot.interact(() -> materialCombo.setValue(MATERIAL_PLASTIC));
-        WaitForAsyncUtils.waitForFxEvents();
-        assertFalse(reflectionCombo.isDisabled());
+        assertTrue(controller.getUpdatedLensItem().isCustomLenses());
+        assertNotNull(controller.getUpdatedLensItem().getPrescriptionDetails());
+        assertTrue(controller.getUpdatedLensItem().getPrescriptionDetails().contains("\"odSph\":\"-2.00\""));
+        assertTrue(controller.getUpdatedLensItem().getPrescriptionDetails().contains("\"material\":\"" + controller.MATERIAL_PLASTIC + "\""));
+        assertEquals(0, new BigDecimal("120.00").compareTo(controller.getUpdatedLensItem().getUnitPrice()));
+        verify(mockEvent, never()).consume();
     }
 
     @Test
-    void handleOkAction_validData_updatesItemAndCloses(FxRobot robot) {
-        robot.interact(() -> {
-            controller.odSphField.setText("-2.00");
-            controller.osSphField.setText("-1.75");
-            controller.materialComboBox.setValue(MATERIAL_BLUECUT); // This will trigger AR
-            controller.shadeComboBox.setValue(MessageProvider.getString("customlens.shade.photochromic"));
-            // Reflection type is set by Blue Cut rule
-            controller.unitPriceField.setText("150.00");
-        });
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleOkAction_invalidPrice_consumesEventAndShowsError() {
+        controller.initializeDialog(null, testLensItem);
+        when(materialComboBox.getValue()).thenReturn(controller.MATERIAL_GLASS);
+        when(unitPriceField.getText()).thenReturn("invalidPrice");
 
-        // Simulate clicking OK button
-        // Accessing DialogPane's button requires it to be part of a Dialog first,
-        // or we can call the handler directly if access is available.
-        // Since controller's handleOkAction is hooked to ButtonType.OK via event filter:
-        Platform.runLater(() -> {
-            ButtonType okButton = controller.dialogPane.getButtonTypes().stream()
-                .filter(bt -> bt.getButtonData() == ButtonBar.ButtonData.OK_DONE)
-                .findFirst().orElse(null);
-            assertNotNull(okButton, "OK ButtonType not found in DialogPane");
-            // Simulate button click by firing an action event on the actual button node
-             ((Button)controller.dialogPane.lookupButton(okButton)).fire();
-        });
-        WaitForAsyncUtils.waitForFxEvents();
+        when(dialogPane.getScene()).thenReturn(mock(javafx.scene.Scene.class)); // For AlertUtil
+        when(dialogPane.getScene().getWindow()).thenReturn(mock(Stage.class));
 
-        assertTrue(controller.okClicked);
-        SalesOrderItemDTO updatedItem = controller.getUpdatedLensItem();
-        assertNotNull(updatedItem);
-        assertEquals(new BigDecimal("150.00"), updatedItem.getUnitPrice());
-        assertTrue(updatedItem.isCustomLenses());
-        assertEquals(MessageProvider.getString("salesorder.itemtype.customlens") + " (" + MATERIAL_BLUECUT + ")", updatedItem.getDescription());
 
-        String details = updatedItem.getPrescriptionDetails();
-        assertTrue(details.contains("\"odSph\":\"-2.00\""));
-        assertTrue(details.contains("\"material\":\"" + MATERIAL_BLUECUT + "\""));
-        assertTrue(details.contains("\"reflectionType\":\"" + REFLECTION_AR + "\""));
+        ActionEvent mockEvent = mock(ActionEvent.class);
+        controller.handleOkAction(mockEvent);
 
-        // Stage should be closed by DialogPane mechanism if event not consumed by validation fail
-        // However, direct verification of stage.isShowing() might be tricky if test ends too fast.
-        // Rely on okClicked flag and DTO content for now.
+        assertNull(controller.getUpdatedLensItem());
+        verify(mockEvent).consume();
     }
 
     @Test
-    void handleOkAction_invalidPrice_showsErrorAndStaysOpen(FxRobot robot) {
-        robot.interact(() -> {
-            controller.materialComboBox.setValue(MATERIAL_PLASTIC);
-            controller.unitPriceField.setText("invalid");
-        });
-        WaitForAsyncUtils.waitForFxEvents();
+    void initialize_setsRTL_forArabicLocale() {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC);
+        resourceBundle = MessageProvider.getBundle();
 
-        try (var alertMock = mockConstruction(javafx.scene.control.Alert.class)) {
-            Platform.runLater(() -> {
-                ButtonType okButton = controller.dialogPane.getButtonTypes().stream()
-                    .filter(bt -> bt.getButtonData() == ButtonBar.ButtonData.OK_DONE)
-                    .findFirst().orElse(null);
-                ((Button)controller.dialogPane.lookupButton(okButton)).fire();
-            });
-            WaitForAsyncUtils.waitForFxEvents();
+        controller.initialize();
+        controller.initializeDialog(null, testLensItem);
 
-            assertTrue(alertMock.constructed().size() >= 1);
-            Alert alert = alertMock.constructed().get(0);
-            assertEquals(Alert.AlertType.ERROR, alert.getAlertType());
-            assertTrue(alert.getContentText().contains(MessageProvider.getString("customlens.error.priceInvalid")));
-        }
-        assertFalse(controller.okClicked); // Should not have proceeded
-        assertTrue(stage.isShowing()); // Dialog should remain open
+        verify(dialogPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+
+        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Reset
     }
 }

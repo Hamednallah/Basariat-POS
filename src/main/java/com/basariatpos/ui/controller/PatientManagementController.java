@@ -51,45 +51,65 @@ public class PatientManagementController implements Initializable {
 
     @FXML private Button addPatientButton;
     @FXML private Button editPatientButton;
-    @FXML private Button viewDiagnosticsButton; // Placeholder button
+    @FXML private Button viewDiagnosticsButton;
+    @FXML private BorderPane patientManagementRootPane; // For RTL
 
     private PatientService patientService;
     private final ObservableList<PatientDTO> patientObservableList = FXCollections.observableArrayList();
-    private OpticalDiagnosticService opticalDiagnosticService; // Added service
+    private OpticalDiagnosticService opticalDiagnosticService;
+    private Stage currentStage; // For dialog ownership
+
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         this.patientService = AppLauncher.getPatientService();
-        this.opticalDiagnosticService = AppLauncher.getOpticalDiagnosticService(); // Get the new service
+        this.opticalDiagnosticService = AppLauncher.getOpticalDiagnosticService();
 
         if (this.patientService == null || this.opticalDiagnosticService == null) {
             logger.error("PatientService or OpticalDiagnosticService is null. Cannot perform operations.");
             showErrorAlert("Critical Error", "Required services are not available.");
-            // Disable UI elements
-            searchField.setDisable(true);
-            searchButton.setDisable(true);
-            clearSearchButton.setDisable(true);
-            addPatientButton.setDisable(true);
-            editPatientButton.setDisable(true);
-            viewDiagnosticsButton.setDisable(true);
+            if(searchField!=null) searchField.setDisable(true);
+            if(searchButton!=null) searchButton.setDisable(true);
+            if(clearSearchButton!=null) clearSearchButton.setDisable(true);
+            if(addPatientButton!=null) addPatientButton.setDisable(true);
+            if(editPatientButton!=null) editPatientButton.setDisable(true);
+            if(viewDiagnosticsButton!=null) viewDiagnosticsButton.setDisable(true);
             return;
         }
 
+        updateNodeOrientation();
         setupTableColumns();
-        loadInitialTableData(); // Load all patients initially or based on default criteria
+        loadInitialTableData();
 
         patientsTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             boolean patientSelected = newSelection != null;
             editPatientButton.setDisable(!patientSelected);
-            viewDiagnosticsButton.setDisable(!patientSelected); // Enable if a patient is selected
+            viewDiagnosticsButton.setDisable(!patientSelected);
         });
 
         searchField.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ENTER) {
-                handleSearchButtonAction(null); // Pass null or new ActionEvent()
+                handleSearchButtonAction(null);
             }
         });
         logger.info("PatientManagementController initialized.");
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (patientManagementRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                patientManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                patientManagementRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("patientManagementRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void setPatientService(PatientService patientService) {

@@ -50,6 +50,7 @@ public class PurchaseOrderListController implements Initializable {
     @FXML private Button addPOButton;
     @FXML private Button viewEditPOButton;
     @FXML private Button receiveStockButton;
+    @FXML private BorderPane poListRootPane; // For RTL
 
     private PurchaseOrderService poService;
     private final ObservableList<PurchaseOrderDTO> poObservableList = FXCollections.observableArrayList();
@@ -78,6 +79,7 @@ public class PurchaseOrderListController implements Initializable {
                 (newSel != null && ("Received".equalsIgnoreCase(newSel.getStatus()) || "Cancelled".equalsIgnoreCase(newSel.getStatus())) )
             );
         });
+        updateNodeOrientation(); // Call after other initializations
         logger.info("PurchaseOrderListController initialized.");
     }
 
@@ -86,13 +88,34 @@ public class PurchaseOrderListController implements Initializable {
         if(poTable != null) loadPurchaseOrders();
     }
 
+    // Method to allow MainFrameController to set the stage if this view is loaded into it
+    public void setStage(Stage stage) {
+        // this.currentStage = stage; // If needed for dialog ownership directly from here
+        updateNodeOrientation(); // Re-apply orientation if stage context changes things
+    }
+
+    private void updateNodeOrientation() {
+        if (poListRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                poListRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                poListRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("poListRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+    }
+
     private void setupTableColumns() {
         poIdColumn.setCellValueFactory(new PropertyValueFactory<>("purchaseOrderId"));
         orderDateColumn.setCellValueFactory(cellData ->
             new SimpleStringProperty(cellData.getValue().getOrderDate().format(dateFormatter))
         );
         supplierColumn.setCellValueFactory(new PropertyValueFactory<>("supplierName"));
-        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status")); // TODO: Localize status
+        statusColumn.setCellValueFactory(cellData -> {
+            String statusKey = "po.status." + cellData.getValue().getStatus().toLowerCase();
+            return new SimpleStringProperty(MessageProvider.getString(statusKey, cellData.getValue().getStatus()));
+        });
         totalAmountColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
         createdByColumn.setCellValueFactory(new PropertyValueFactory<>("createdByName"));
     }

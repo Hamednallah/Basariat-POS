@@ -13,7 +13,7 @@
 
 <BorderPane fx:id="productManagementRootPane" prefHeight="600.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.ProductManagementController">
     <stylesheets>
-        <String fx:value="@styles.css" />
+        <String fx:value="@../style/basariat-pos.css" />
     </stylesheets>
     <top>
         <VBox>

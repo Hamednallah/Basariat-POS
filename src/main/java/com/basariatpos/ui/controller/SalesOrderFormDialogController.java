@@ -69,10 +69,11 @@ public class SalesOrderFormDialogController implements Initializable {
     @FXML private TextField amountPaidField;
     @FXML private Label balanceDueLabel;
     @FXML private Button notifyOrderReadyButton;
-    @FXML private Button recordPaymentButton; // Added
-    @FXML private Button abandonOrderButton; // Added for Abandon Order
+    @FXML private Button recordPaymentButton;
+    @FXML private Button abandonOrderButton;
     @FXML private Button saveOrderButton;
     @FXML private Button cancelButton;
+    @FXML private BorderPane salesOrderFormRootPane; // For RTL
 
     private Stage dialogStage;
     private SalesOrderService salesOrderService;
@@ -130,6 +131,22 @@ public class SalesOrderFormDialogController implements Initializable {
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        updateNodeOrientation(); // Ensure orientation after stage is set
+        if (this.dialogStage != null && salesOrderFormRootPane != null && this.dialogStage.getScene() != null) {
+            this.dialogStage.getScene().setNodeOrientation(salesOrderFormRootPane.getNodeOrientation());
+        }
+    }
+
+    private void updateNodeOrientation() {
+        if (salesOrderFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                salesOrderFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                salesOrderFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("salesOrderFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public boolean isSaved() {
@@ -137,6 +154,8 @@ public class SalesOrderFormDialogController implements Initializable {
     }
 
     public void initializeDialogData(SalesOrderDTO orderToEdit) {
+        updateNodeOrientation(); // Call at the beginning too
+
         if (orderToEdit == null) {
             this.currentOrder = new SalesOrderDTO();
             dialogTitleLabel.setText(MessageProvider.getString("salesorder.form.add.title"));
@@ -217,21 +236,79 @@ public class SalesOrderFormDialogController implements Initializable {
 
         updateNotifyButtonState();
         updateRecordPaymentButtonState();
-        updateAbandonOrderButtonState(); // Call to update new button state
+        updateAbandonOrderButtonState();
         recalculateTotals();
+        checkActiveShiftAndPermissions(); // Check shift and permissions
     }
+
+    private void checkActiveShiftAndPermissions() {
+        boolean activeShift = false;
+        String shiftStatusTooltip = MessageProvider.getString("tooltip.noActiveShiftForTransaction");
+
+        if (userSessionService != null && userSessionService.getActiveShift() != null &&
+            "Active".equalsIgnoreCase(userSessionService.getActiveShift().getStatus())) {
+            activeShift = true;
+            shiftStatusTooltip = ""; // Clear tooltip if shift is active
+        }
+
+        saveOrderButton.setDisable(!activeShift);
+        recordPaymentButton.setDisable(!activeShift || !canRecordPayment()); // Also depends on balance
+        addItemButton.setDisable(!activeShift); // Cannot add items without active shift
+        removeItemButton.setDisable(!activeShift); // Cannot remove items without active shift
+        configureLensButton.setDisable(!activeShift); // Cannot configure lens without active shift
+        discountField.setDisable(!activeShift || !userSessionService.hasPermission("CAN_GIVE_DISCOUNT"));
+
+        if (!activeShift) {
+            Tooltip tt = new Tooltip(shiftStatusTooltip);
+            saveOrderButton.setTooltip(tt);
+            recordPaymentButton.setTooltip(tt);
+            addItemButton.setTooltip(tt);
+            removeItemButton.setTooltip(tt);
+            configureLensButton.setTooltip(tt);
+            discountField.setTooltip(tt);
+        } else {
+            saveOrderButton.setTooltip(null);
+            // recordPaymentButton tooltip might be set by updateRecordPaymentButtonState based on balance
+            addItemButton.setTooltip(null);
+            removeItemButton.setTooltip(null);
+            configureLensButton.setTooltip(null);
+            if (userSessionService.hasPermission("CAN_GIVE_DISCOUNT")) {
+                discountField.setTooltip(null);
+            } else {
+                 discountField.setTooltip(new Tooltip(MessageProvider.getString("salesorder.tooltip.discountNoPermission")));
+            }
+        }
+        updateAbandonOrderButtonState(); // This already checks permission
+    }
+
 
     private void updateAbandonOrderButtonState() {
         boolean canAbandon = false;
         if (userSessionService != null && currentOrder != null && currentOrder.getSalesOrderId() > 0 &&
             !Arrays.asList("Completed", "Cancelled", "Abandoned").contains(currentOrder.getStatus()) &&
-            userSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")) {
+            userSessionService.hasPermission("PROCESS_ABANDONED_ORDERS") &&
+            userSessionService.getActiveShift() != null && "Active".equalsIgnoreCase(userSessionService.getActiveShift().getStatus())) { // Added active shift check
             canAbandon = true;
         }
         if (abandonOrderButton != null) {
-            abandonOrderButton.setVisible(canAbandon);
-            abandonOrderButton.setManaged(canAbandon); // Ensure it doesn't take space if not visible
+            abandonOrderButton.setVisible(true); // Always visible, but disable state changes
+            abandonOrderButton.setManaged(true);
             abandonOrderButton.setDisable(!canAbandon);
+            if (!canAbandon) {
+                String reason = "";
+                if (userSessionService == null || userSessionService.getActiveShift() == null || !"Active".equalsIgnoreCase(userSessionService.getActiveShift().getStatus())) {
+                    reason = MessageProvider.getString("tooltip.noActiveShiftForTransaction");
+                } else if (!userSessionService.hasPermission("PROCESS_ABANDONED_ORDERS")) {
+                    reason = "You do not have permission to abandon orders."; // TODO: i18n
+                } else if (currentOrder == null || currentOrder.getSalesOrderId() == 0) {
+                    reason = "Order must be saved first."; // TODO: i18n
+                } else {
+                    reason = "Order status does not allow abandonment."; // TODO: i18n
+                }
+                abandonOrderButton.setTooltip(new Tooltip(reason));
+            } else {
+                abandonOrderButton.setTooltip(null);
+            }
         }
     }
 

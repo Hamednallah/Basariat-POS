@@ -11,8 +11,12 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
+<?import java.lang.String?>
 
 <BorderPane fx:id="expenseManagementPane" styleClass="view-pane" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.basariatpos.ui.controller.ExpenseManagementController">
+    <stylesheets>
+        <String fx:value="@../style/basariat-pos.css" />
+    </stylesheets>
     <top>
         <VBox styleClass="view-header" spacing="10.0" BorderPane.alignment="CENTER">
             <Label text="%expensemanagement.title" styleClass="view-title" />

@@ -50,18 +50,19 @@ public class ExpenseManagementController implements Initializable {
     @FXML private TableColumn<ExpenseDTO, String> recordedByColumn;
     @FXML private TableColumn<ExpenseDTO, Integer> shiftIdColumn;
     @FXML private Button addExpenseButton;
+    @FXML private BorderPane expenseManagementPane; // For RTL
 
     private ExpenseService expenseService;
     private ExpenseCategoryService expenseCategoryService;
-    // BankNameService might be needed if ExpenseFormDialogController is not passed it by AppLauncher directly
     private BankNameService bankNameService;
+    private Stage currentStage; // For dialog ownership
 
     private ObservableList<ExpenseDTO> expenseList = FXCollections.observableArrayList();
 
     public void setServices(ExpenseService expenseService, ExpenseCategoryService expenseCategoryService, BankNameService bankNameService) {
         this.expenseService = expenseService;
         this.expenseCategoryService = expenseCategoryService;
-        this.bankNameService = bankNameService; // Store for passing to dialog
+        this.bankNameService = bankNameService;
         loadInitialData();
     }
 
@@ -70,10 +71,27 @@ public class ExpenseManagementController implements Initializable {
         setupTableColumns();
         expensesTable.setItems(expenseList);
         setupCategoryFilterCombo();
+        updateNodeOrientation();
 
-        // Default date range (e.g., current month)
         fromDateField.setValue(LocalDate.now().withDayOfMonth(1));
         toDateField.setValue(LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()));
+    }
+
+    public void setStage(Stage stage) {
+        this.currentStage = stage;
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (expenseManagementPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                expenseManagementPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                expenseManagementPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("expenseManagementPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void setupTableColumns() {

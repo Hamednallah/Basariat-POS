@@ -51,6 +51,7 @@ public class SalesOrderListController implements Initializable {
     @FXML private TableColumn<SalesOrderDTO, BigDecimal> balanceDueColumn;
     @FXML private Button addOrderButton;
     @FXML private Button viewEditOrderButton;
+    @FXML private BorderPane salesOrderListRootPane; // For RTL
 
     private SalesOrderService salesOrderService;
     private ObservableList<SalesOrderDTO> salesOrderData = FXCollections.observableArrayList();
@@ -77,8 +78,20 @@ public class SalesOrderListController implements Initializable {
         toDateFilter.setValue(LocalDate.now());
 
         salesOrdersTable.setItems(salesOrderData);
-        // Load initial data
-        // handleSearchOrdersAction(null); // Call this once service is set
+        updateNodeOrientation();
+        // Load initial data in loadInitialData() called by MainFrameController
+    }
+
+    private void updateNodeOrientation() {
+        if (salesOrderListRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                salesOrderListRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                salesOrderListRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("salesOrderListRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void setupTableColumns() {
@@ -89,12 +102,17 @@ public class SalesOrderListController implements Initializable {
             new SimpleStringProperty(cellData.getValue().getPatientFullName() != null ?
                                      cellData.getValue().getPatientFullName() :
                                      (cellData.getValue().getPatientSystemId() != null ?
-                                      cellData.getValue().getPatientSystemId() : "N/A")));
-        statusColumn.setCellValueFactory(new PropertyValueFactory<>("status"));
+                                      cellData.getValue().getPatientSystemId() : MessageProvider.getString("label.anonymous")))); // Localized "N/A"
+        statusColumn.setCellValueFactory(cellData -> {
+            String statusVal = cellData.getValue().getStatus();
+            String statusKey = "salesorder.status." + (statusVal != null ? statusVal.toLowerCase() : "unknown");
+            return new SimpleStringProperty(MessageProvider.getString(statusKey, statusVal)); // Localized status
+        });
         totalColumn.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
         balanceDueColumn.setCellValueFactory(new PropertyValueFactory<>("balanceDue"));
 
-        // TODO: Add custom cell formatting for amounts if needed (e.g. currency symbol)
+        // TODO: Add custom cell formatting for amounts if needed (e.g. currency symbol from CenterProfile)
+        // For now, assuming amounts are displayed as plain numbers. CSS class 'table-column-amount' can be used for alignment.
     }
 
     private void populateStatusFilterCombo() {

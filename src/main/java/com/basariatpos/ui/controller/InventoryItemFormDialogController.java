@@ -46,6 +46,7 @@ public class InventoryItemFormDialogController {
     @FXML private CheckBox activeCheckBox;
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox inventoryItemFormRootPane; // For RTL
 
     private Stage dialogStage;
     private InventoryItemService itemService;
@@ -61,7 +62,21 @@ public class InventoryItemFormDialogController {
     public void initialize() { // Called by FXML loader
          activeCheckBox.setSelected(true); // Default for new item
          setupNumericFieldFormatters();
+         updateNodeOrientation();
     }
+
+    private void updateNodeOrientation() {
+        if (inventoryItemFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                inventoryItemFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                inventoryItemFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("inventoryItemFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
+    }
+
 
     private void setupNumericFieldFormatters() {
         // Allow digits, and optionally one dot or comma for decimals

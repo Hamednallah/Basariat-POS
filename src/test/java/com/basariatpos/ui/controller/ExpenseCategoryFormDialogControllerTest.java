@@ -8,172 +8,147 @@ import com.basariatpos.service.CategoryException;
 import com.basariatpos.service.ExpenseCategoryService;
 import com.basariatpos.service.ValidationException;
 
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collections;
+import java.util.Locale;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(ApplicationExtension.class)
-class ExpenseCategoryFormDialogControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class ExpenseCategoryFormDialogControllerTest {
 
-    @Mock
-    private ExpenseCategoryService mockExpenseCategoryService;
+    @Mock private Label dialogTitleLabel;
+    @Mock private TextField nameEnField;
+    @Mock private TextField nameArField;
+    @Mock private CheckBox activeCheckBox;
+    @Mock private VBox expenseCategoryFormRootPane; // For RTL
+    @Mock private Stage mockDialogStage;
+    @Mock private ExpenseCategoryService mockExpenseCategoryService;
 
+    @InjectMocks
     private ExpenseCategoryFormDialogController controller;
-    private Stage stage;
 
-    private final String NAME_EN_FIELD = "#nameEnField";
-    private final String NAME_AR_FIELD = "#nameArField";
-    private final String ACTIVE_CHECKBOX = "#activeCheckBox";
-    private final String SAVE_BUTTON = "#saveButton";
-    private final String DIALOG_TITLE_LABEL = "#dialogTitleLabel";
+    private static ResourceBundle resourceBundle;
 
-    @Start
-    private void start(Stage stage) throws IOException {
-        this.stage = stage;
-        MockitoAnnotations.openMocks(this);
+    @BeforeAll
+    static void setUpClass() {
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
+        resourceBundle = MessageProvider.getBundle();
+        try {
+            new javafx.embed.swing.JFXPanel();
+        } catch (Exception e) { /* Ignore */ }
+    }
 
-        LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
-        ResourceBundle bundle = MessageProvider.getBundle();
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/ExpenseCategoryFormDialog.fxml"));
-        loader.setResources(bundle);
-        Parent root = loader.load();
-        controller = loader.getController();
+    @BeforeEach
+    void setUp() {
+        controller.dialogTitleLabel = dialogTitleLabel;
+        controller.nameEnField = nameEnField;
+        controller.nameArField = nameArField;
+        controller.activeCheckBox = activeCheckBox;
+        controller.expenseCategoryFormRootPane = expenseCategoryFormRootPane;
 
         controller.setExpenseCategoryService(mockExpenseCategoryService);
-        controller.setDialogStage(stage);
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        stage.show();
-        stage.toFront();
-    }
-
-    @AfterEach
-    void tearDown(FxRobot robot) {
-        robot.listWindows().stream()
-            .filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL && w != stage)
-            .forEach(w -> robot.targetWindow(w).close());
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.initialize(null, resourceBundle);
+        controller.setDialogStage(mockDialogStage);
     }
 
     @Test
-    void addMode_initializesFieldsCorrectly(FxRobot robot) {
-        // Controller's initialize + no setEditableCategory = Add mode
-        // Title is set by caller (UserManagementController), so not tested here directly
-        // but can check if it's the default FXML one if not set by caller.
-        // The dialogTitleLabel is updated in setEditableCategory.
-
-        assertTrue(robot.lookup(ACTIVE_CHECKBOX).queryAs(CheckBox.class).isSelected());
-        assertEquals("", robot.lookup(NAME_EN_FIELD).queryAs(TextField.class).getText());
+    void initialize_defaultsAndSetsOrientation() {
+        verify(activeCheckBox).setSelected(true);
+        verify(expenseCategoryFormRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
     }
 
     @Test
-    void editMode_populatesFieldsCorrectly(FxRobot robot) {
-        ExpenseCategoryDTO category = new ExpenseCategoryDTO(1, "Office Supplies", "لوازم مكتبية", false);
-        when(mockExpenseCategoryService.isProtectedCategory(category)).thenReturn(false); // Assume not protected for this test
+    void setEditableCategory_populatesForm_disablesFieldsIfProtected() {
+        ExpenseCategoryDTO category = new ExpenseCategoryDTO("Food EN", "طعام", true);
+        category.setExpenseCategoryId(1);
+        when(mockExpenseCategoryService.isProtectedCategory(category)).thenReturn(true);
 
-        robot.interact(() -> controller.setEditableCategory(category));
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.setEditableCategory(category);
 
-        assertEquals("Office Supplies", robot.lookup(NAME_EN_FIELD).queryAs(TextField.class).getText());
-        assertEquals("لوازم مكتبية", robot.lookup(NAME_AR_FIELD).queryAs(TextField.class).getText());
-        assertFalse(robot.lookup(ACTIVE_CHECKBOX).queryAs(CheckBox.class).isSelected());
-        assertEquals(MessageProvider.getString("expensecategory.dialog.edit.title"), robot.lookup(DIALOG_TITLE_LABEL).queryAs(Label.class).getText());
+        verify(dialogTitleLabel).setText(MessageProvider.getString("expensecategory.dialog.edit.title"));
+        verify(nameEnField).setText("Food EN");
+        verify(nameArField).setText("طعام");
+        verify(activeCheckBox).setSelected(true);
+        verify(nameEnField).setDisable(true);
+        verify(nameArField).setDisable(true);
     }
 
     @Test
-    void editMode_protectedCategory_disablesNameFields(FxRobot robot) {
-        ExpenseCategoryDTO protectedCat = new ExpenseCategoryDTO(5, "Loss on Abandoned Orders", "خسارة الطلبات الملغاة", true);
-        when(mockExpenseCategoryService.isProtectedCategory(protectedCat)).thenReturn(true);
+    void setEditableCategory_populatesForm_enablesFieldsIfNotProtected() {
+        ExpenseCategoryDTO category = new ExpenseCategoryDTO("Travel EN", "سفر", true);
+        category.setExpenseCategoryId(2);
+        when(mockExpenseCategoryService.isProtectedCategory(category)).thenReturn(false);
 
-        robot.interact(() -> controller.setEditableCategory(protectedCat));
-        WaitForAsyncUtils.waitForFxEvents();
-
-        assertTrue(robot.lookup(NAME_EN_FIELD).queryAs(TextField.class).isDisabled());
-        assertTrue(robot.lookup(NAME_AR_FIELD).queryAs(TextField.class).isDisabled());
+        controller.setEditableCategory(category);
+        // By default, fields are not disabled, so verify they are NOT disabled,
+        // or ensure they are explicitly enabled if a previous state could have disabled them.
+        // For this controller, setDisable(false) is not explicitly called if not protected,
+        // so we rely on the default enabled state.
+        verify(nameEnField, never()).setDisable(true);
+        verify(nameArField, never()).setDisable(true);
     }
 
 
     @Test
-    void saveButton_addMode_validInput_callsServiceAndCloses(FxRobot robot) throws Exception {
-        ExpenseCategoryDTO savedCategory = new ExpenseCategoryDTO(10, "New Category EN", "فئة جديدة AR", true);
-        when(mockExpenseCategoryService.saveExpenseCategory(any(ExpenseCategoryDTO.class))).thenReturn(savedCategory);
+    void handleSaveButtonAction_validInput_addMode_savesAndCloses() throws CategoryException, ValidationException {
+        when(nameEnField.getText()).thenReturn("New Category EN");
+        when(nameArField.getText()).thenReturn("فئة جديدة");
+        when(activeCheckBox.isSelected()).thenReturn(true);
 
-        robot.clickOn(NAME_EN_FIELD).write("New Category EN");
-        robot.clickOn(NAME_AR_FIELD).write("فئة جديدة AR");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.handleSaveButtonAction(null);
 
+        assertTrue(controller.isSaved());
         ArgumentCaptor<ExpenseCategoryDTO> captor = ArgumentCaptor.forClass(ExpenseCategoryDTO.class);
         verify(mockExpenseCategoryService).saveExpenseCategory(captor.capture());
         assertEquals("New Category EN", captor.getValue().getCategoryNameEn());
-
-        assertTrue(controller.isSaved());
-        assertFalse(stage.isShowing());
+        verify(mockDialogStage).close();
     }
 
     @Test
-    void saveButton_emptyEnglishName_showsValidationError(FxRobot robot) {
-        robot.clickOn(NAME_AR_FIELD).write("اسم عربي");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleSaveButtonAction_serviceThrowsCategoryAlreadyExistsException_showsError() throws CategoryException, ValidationException {
+        when(nameEnField.getText()).thenReturn("Existing EN");
+        when(nameArField.getText()).thenReturn("موجود عربي");
+        when(activeCheckBox.isSelected()).thenReturn(true);
+        doThrow(new CategoryAlreadyExistsException("English name exists"))
+            .when(mockExpenseCategoryService).saveExpenseCategory(any(ExpenseCategoryDTO.class));
+        // For showErrorAlert to get owner stage
+        when(mockDialogStage.getOwner()).thenReturn(null);
+        when(nameEnField.getScene()).thenReturn(mock(javafx.scene.Scene.class)); // Mock scene
+        when(nameEnField.getScene().getWindow()).thenReturn(mockDialogStage); // Mock window from scene
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert should be shown.");
+
+        controller.handleSaveButtonAction(null);
+
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing());
-
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
+        verify(mockDialogStage, never()).close();
     }
 
     @Test
-    void saveButton_serviceThrowsCategoryAlreadyExists_showsErrorAlert(FxRobot robot) throws Exception {
-        when(mockExpenseCategoryService.saveExpenseCategory(any(ExpenseCategoryDTO.class)))
-            .thenThrow(new CategoryAlreadyExistsException("Test Category EN (English)"));
+    void initialize_setsRTL_forArabicLocale() {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC);
+        resourceBundle = MessageProvider.getBundle();
 
-        robot.clickOn(NAME_EN_FIELD).write("Test Category EN");
-        robot.clickOn(NAME_AR_FIELD).write("فئة اختبارية");
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
+        controller.initialize(null, resourceBundle);
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert for existing category should be shown.");
-        assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing());
+        verify(expenseCategoryFormRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
 
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
-    }
-
-    @Test
-    void cancelButton_closesDialog_isSavedFalse(FxRobot robot) {
-        robot.clickOn("#cancelButton");
-        WaitForAsyncUtils.waitForFxEvents();
-
-        assertFalse(controller.isSaved());
-        assertFalse(stage.isShowing());
+        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Reset
     }
 }

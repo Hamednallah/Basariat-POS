@@ -37,6 +37,7 @@ public class ProductFormDialogController {
     @FXML private CheckBox isStockItemCheckBox;
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox productFormRootPane; // For RTL
 
     private Stage dialogStage;
     private ProductService productService;
@@ -52,6 +53,7 @@ public class ProductFormDialogController {
         this.productCategoryService = productCategoryService;
         this.dialogStage = dialogStage;
 
+        updateNodeOrientation(); // Call before other UI setup that might depend on it
         loadCategoryComboBox();
 
         if (productToEdit != null) {
@@ -83,9 +85,23 @@ public class ProductFormDialogController {
             isStockItemCheckBox.setDisable(true);
         } else if (isEditMode && !editableProduct.isService()){
              isStockItemCheckBox.setDisable(false);
-             isStockItemCheckBox.setSelected(editableProduct.isStockItem());
+             // Make sure editableProduct is not null before accessing its properties
+             if(editableProduct != null) isStockItemCheckBox.setSelected(editableProduct.isStockItem());
         }
+    }
 
+    private void updateNodeOrientation() {
+        if (productFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                productFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                productFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+            // Ensure text areas also align text correctly if needed, though nodeOrientation often handles it.
+            // descriptionArArea.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT); // Already in FXML
+        } else {
+            logger.warn("productFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void loadCategoryComboBox() {

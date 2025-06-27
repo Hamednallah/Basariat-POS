@@ -41,13 +41,12 @@ public class ExpenseFormDialogController {
     @FXML private ComboBox<BankNameDTO> bankNameCombo;
     @FXML private Label transactionIdPromptLabel;
     @FXML private TextField transactionIdField;
-    // Save and Cancel buttons are typically part of DialogPane's buttonTypes
 
     private Stage dialogStage;
     private ExpenseService expenseService;
     private ExpenseCategoryService expenseCategoryService;
     private BankNameService bankNameService;
-    private ExpenseDTO currentExpense;
+    private ExpenseDTO currentExpense; // Used for both add (new DTO) and edit (passed DTO)
     private boolean saved = false;
 
     private final List<String> PAYMENT_METHODS = Arrays.asList("Cash", "Bank Transaction", "Card", "Cheque", "Other");
@@ -61,16 +60,28 @@ public class ExpenseFormDialogController {
         });
 
         categoryCombo.setConverter(new StringConverter<ExpenseCategoryDTO>() {
-            @Override public String toString(ExpenseCategoryDTO cat) { return cat == null ? null : cat.getCategoryNameEn(); } // Assuming English
+            @Override public String toString(ExpenseCategoryDTO cat) { return cat == null ? null : (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale()) ? cat.getCategoryNameAr() : cat.getCategoryNameEn()); }
             @Override public ExpenseCategoryDTO fromString(String string) { return null; }
         });
         bankNameCombo.setConverter(new StringConverter<BankNameDTO>() {
-            @Override public String toString(BankNameDTO bank) { return bank == null ? null : bank.getNameEn(); } // Assuming English
+            @Override public String toString(BankNameDTO bank) { return bank == null ? null : (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale()) ? bank.getNameAr() : bank.getNameEn()); }
             @Override public BankNameDTO fromString(String string) { return null; }
         });
 
-        // Default date to today
         dateField.setValue(LocalDate.now());
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (expenseFormDialogPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                expenseFormDialogPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                expenseFormDialogPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("expenseFormDialogPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     public void initializeDialog(ExpenseDTO expenseToEdit,
@@ -78,29 +89,29 @@ public class ExpenseFormDialogController {
                                  ExpenseCategoryService expenseCategoryService,
                                  BankNameService bankNameService,
                                  Stage stage) {
-        this.currentExpense = expenseToEdit;
         this.expenseService = expenseService;
         this.expenseCategoryService = expenseCategoryService;
         this.bankNameService = bankNameService;
         this.dialogStage = stage;
 
-        loadCategories();
-        loadBankNames(); // Load banks irrespective of initial payment method
+        updateNodeOrientation();
 
-        if (currentExpense != null) { // Editing existing expense
+        loadCategories();
+        loadBankNames();
+
+        if (expenseToEdit != null && expenseToEdit.getExpenseId() != null && expenseToEdit.getExpenseId() > 0) {
+            this.currentExpense = expenseToEdit;
             titleLabel.setText(MessageProvider.getString("expenseform.dialog.title.edit"));
-            // Populate fields from currentExpense (not implemented for this subtask, focuses on Add)
-            // For add, currentExpense is null.
-        } else { // Adding new expense
+            populateFieldsForEdit();
+        } else {
             titleLabel.setText(MessageProvider.getString("expenseform.dialog.title.add"));
-            this.currentExpense = new ExpenseDTO(); // Create a new DTO for add
+            this.currentExpense = new ExpenseDTO();
         }
 
-        toggleBankFields(null); // Set initial state of bank fields
+        toggleBankFields(paymentMethodCombo.getValue());
 
-        // Handle Save button action via DialogPane's button types
         final Button btOk = (Button) expenseFormDialogPane.lookupButton(ButtonType.OK);
-        if (btOk != null) { // Might be null if FXML is not fully loaded or no OK_DONE ButtonType
+        if (btOk != null) {
              btOk.setText(MessageProvider.getString("expenseform.button.save"));
              btOk.addEventFilter(ActionEvent.ACTION, this::handleSaveExpenseAction);
         } else {
@@ -108,9 +119,31 @@ public class ExpenseFormDialogController {
         }
     }
 
+    private void populateFieldsForEdit() {
+        if (currentExpense == null) return;
+        dateField.setValue(currentExpense.getExpenseDate());
+        descriptionField.setText(currentExpense.getDescription());
+        amountField.setText(currentExpense.getAmount() != null ? currentExpense.getAmount().toPlainString() : "");
+        paymentMethodCombo.setValue(currentExpense.getPaymentMethod());
+
+        if (currentExpense.getExpenseCategoryId() != null) {
+            categoryCombo.getItems().stream()
+                .filter(cat -> cat != null && cat.getExpenseCategoryId().equals(currentExpense.getExpenseCategoryId()))
+                .findFirst().ifPresent(categoryCombo::setValue);
+        }
+        if (currentExpense.getBankNameId() != null) {
+            bankNameCombo.getItems().stream()
+                .filter(bank -> bank != null && bank.getBankNameId().equals(currentExpense.getBankNameId()))
+                .findFirst().ifPresent(bankNameCombo::setValue);
+        }
+        transactionIdField.setText(currentExpense.getTransactionIdRef());
+    }
+
     private void loadCategories() {
         try {
-            List<ExpenseCategoryDTO> categories = expenseCategoryService.getActiveExpenseCategories();
+            List<ExpenseCategoryDTO> categories = expenseCategoryService.getActiveExpenseCategories().stream()
+                .filter(cat -> !cat.isSystemReserved())
+                .toList();
             categoryCombo.setItems(FXCollections.observableArrayList(categories));
         } catch (Exception e) {
             logger.error("Failed to load expense categories: {}", e.getMessage(), e);
@@ -169,7 +202,7 @@ public class ExpenseFormDialogController {
 
         if (!errors.isEmpty()) {
             AlertUtil.showValidationError(errors);
-            event.consume(); // Prevent dialog from closing
+            event.consume();
             return;
         }
 
@@ -186,7 +219,6 @@ public class ExpenseFormDialogController {
             currentExpense.setBankNameId(null);
             currentExpense.setTransactionIdRef(null);
         }
-        // createdByUserId and shiftId (for cash) will be set by the service
 
         try {
             ExpenseDTO savedExpense = expenseService.recordExpense(currentExpense);
@@ -195,11 +227,10 @@ public class ExpenseFormDialogController {
                 MessageProvider.getString("expenseform.success.message", String.valueOf(savedExpense.getExpenseId()))
             );
             saved = true;
-            closeDialog(); // DialogPane closes automatically if event not consumed
         } catch (ExpenseValidationException | NoActiveShiftException | CategoryNotFoundException | BankNameNotFoundException | ExpenseException e) {
             logger.error("Failed to record expense: {}", e.getMessage(), e);
             AlertUtil.showError(MessageProvider.getString("expenseform.error.title"), e.getMessage());
-            event.consume(); // Prevent dialog from closing on error
+            event.consume();
         }
     }
 

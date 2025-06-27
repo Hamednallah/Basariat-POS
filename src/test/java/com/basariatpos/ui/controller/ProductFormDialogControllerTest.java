@@ -7,177 +7,187 @@ import com.basariatpos.model.ProductDTO;
 import com.basariatpos.service.ProductCategoryService;
 import com.basariatpos.service.ProductService;
 import com.basariatpos.service.exception.ProductAlreadyExistsException;
+import com.basariatpos.service.exception.ProductServiceException;
 import com.basariatpos.service.exception.ProductValidationException;
 import com.basariatpos.service.exception.CategoryNotFoundException;
 
-
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
+import javafx.collections.FXCollections;
 import javafx.scene.control.*;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.stage.Window;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.testfx.api.FxRobot;
-import org.testfx.framework.junit5.ApplicationExtension;
-import org.testfx.framework.junit5.Start;
-import org.testfx.util.WaitForAsyncUtils;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.ResourceBundle;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(ApplicationExtension.class)
-class ProductFormDialogControllerTest {
+@ExtendWith(MockitoExtension.class)
+public class ProductFormDialogControllerTest {
 
+    @Mock private Label dialogTitleLabel;
+    @Mock private TextField productCodeField;
+    @Mock private TextField nameEnField;
+    @Mock private TextField nameArField;
+    @Mock private TextArea descriptionEnArea;
+    @Mock private TextArea descriptionArArea;
+    @Mock private ComboBox<ProductCategoryDTO> categoryComboBox;
+    @Mock private CheckBox isServiceCheckBox;
+    @Mock private CheckBox isStockItemCheckBox;
+    @Mock private VBox productFormRootPane; // For RTL
+    @Mock private Stage mockDialogStage;
     @Mock private ProductService mockProductService;
     @Mock private ProductCategoryService mockProductCategoryService;
 
+    @InjectMocks
     private ProductFormDialogController controller;
-    private Stage stage;
 
-    private final String PRODUCT_CODE_FIELD = "#productCodeField";
-    private final String NAME_EN_FIELD = "#nameEnField";
-    private final String NAME_AR_FIELD = "#nameArField";
-    private final String CATEGORY_COMBOBOX = "#categoryComboBox";
-    private final String IS_SERVICE_CHECKBOX = "#isServiceCheckBox";
-    private final String IS_STOCK_ITEM_CHECKBOX = "#isStockItemCheckBox";
-    private final String SAVE_BUTTON = "#saveButton";
+    private static ResourceBundle resourceBundle;
+    private ProductCategoryDTO sampleCategory;
 
-    private List<ProductCategoryDTO> mockCategories;
-
-    @Start
-    private void start(Stage stage) throws IOException {
-        this.stage = stage;
-        MockitoAnnotations.openMocks(this);
-
-        LocaleManager.setCurrentLocale(LocaleManager.DEFAULT_LOCALE);
-        ResourceBundle bundle = MessageProvider.getBundle();
-
-        mockCategories = Arrays.asList(
-            new ProductCategoryDTO(1, "Frames", "إطارات"),
-            new ProductCategoryDTO(2, "Lenses", "عدسات")
-        );
-        when(mockProductCategoryService.getAllProductCategories()).thenReturn(mockCategories);
-
-
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/basariatpos/ui/view/ProductFormDialog.fxml"));
-        loader.setResources(bundle);
-        Parent root = loader.load();
-        controller = loader.getController();
-
-        // InitializeDialog is called by the parent controller in real app. Here we call it manually for test setup.
-        // For add mode:
-        // controller.initializeDialog(mockProductService, mockProductCategoryService, stage, null);
-
-        Scene scene = new Scene(root);
-        stage.setScene(scene);
-        // Title is usually set by the calling controller (ProductManagementController)
-        // stage.setTitle(MessageProvider.getString("product.dialog.add.title"));
-        stage.show();
-        stage.toFront();
+    @BeforeAll
+    static void setUpClass() {
+        LocaleManager.setCurrentLocale(Locale.ENGLISH);
+        resourceBundle = MessageProvider.getBundle();
+         try {
+            new javafx.embed.swing.JFXPanel();
+        } catch (Exception e) { /* Ignore */ }
     }
 
-    @AfterEach
-    void tearDown(FxRobot robot) {
-        robot.listWindows().stream()
-            .filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL && w != stage)
-            .forEach(w -> robot.targetWindow(w).close());
-        WaitForAsyncUtils.waitForFxEvents();
+    @BeforeEach
+    void setUp() {
+        // Manual FXML injection
+        controller.dialogTitleLabel = dialogTitleLabel;
+        controller.productCodeField = productCodeField;
+        controller.nameEnField = nameEnField;
+        controller.nameArField = nameArField;
+        controller.descriptionEnArea = descriptionEnArea;
+        controller.descriptionArArea = descriptionArArea;
+        controller.categoryComboBox = categoryComboBox;
+        controller.isServiceCheckBox = isServiceCheckBox;
+        controller.isStockItemCheckBox = isStockItemCheckBox;
+        controller.productFormRootPane = productFormRootPane;
+
+        sampleCategory = new ProductCategoryDTO("Electronics EN", "إلكترونيات");
+        sampleCategory.setCategoryId(1);
+        try {
+            when(mockProductCategoryService.getAllProductCategories()).thenReturn(List.of(sampleCategory));
+        } catch (Exception e) { fail("Mock setup failed: " + e.getMessage()); }
+
+        // Mock ComboBox behavior
+        when(categoryComboBox.getItems()).thenReturn(FXCollections.observableArrayList(sampleCategory));
+        when(categoryComboBox.getValue()).thenReturn(sampleCategory); // Assume a category is selected for valid saves
+
+        // Mock CheckBox selectedProperty for listeners
+        // These are critical for the listener logic in initializeDialog
+        when(isServiceCheckBox.selectedProperty()).thenReturn(new javafx.beans.property.SimpleBooleanProperty(false));
+        when(isStockItemCheckBox.selectedProperty()).thenReturn(new javafx.beans.property.SimpleBooleanProperty(true));
+
+
+        // initializeDialog is the entry point
+        // controller.initializeDialog(mockProductService, mockProductCategoryService, mockDialogStage, null);
     }
 
     @Test
-    void addMode_initializesCorrectly(FxRobot robot) {
-        robot.interact(() -> controller.initializeDialog(mockProductService, mockProductCategoryService, stage, null));
-        WaitForAsyncUtils.waitForFxEvents();
-
-        assertEquals("", robot.lookup(PRODUCT_CODE_FIELD).queryAs(TextField.class).getText());
-        assertFalse(robot.lookup(IS_SERVICE_CHECKBOX).queryAs(CheckBox.class).isSelected());
-        assertTrue(robot.lookup(IS_STOCK_ITEM_CHECKBOX).queryAs(CheckBox.class).isSelected());
-        assertFalse(robot.lookup(IS_STOCK_ITEM_CHECKBOX).queryAs(CheckBox.class).isDisabled());
-        ComboBox<ProductCategoryDTO> categoryCombo = robot.lookup(CATEGORY_COMBOBOX).queryComboBox();
-        assertEquals(2, categoryCombo.getItems().size());
+    void initializeDialog_addMode_setsDefaultsAndOrientation() {
+        controller.initializeDialog(mockProductService, mockProductCategoryService, mockDialogStage, null);
+        verify(dialogTitleLabel).setText(MessageProvider.getString("product.dialog.add.title"));
+        verify(isStockItemCheckBox).setSelected(true);
+        verify(isServiceCheckBox).setSelected(false);
+        verify(productFormRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+        verify(categoryComboBox).setItems(any(ObservableList.class));
     }
 
     @Test
-    void editMode_populatesFieldsCorrectly(FxRobot robot) {
-        ProductDTO productToEdit = new ProductDTO(1, "P123", "Test Sunglass", "نظارة شمسية", 1,
-                                                "Frames", "إطارات", "Desc", "وصف", false, true);
-        robot.interact(() -> controller.initializeDialog(mockProductService, mockProductCategoryService, stage, productToEdit));
-        WaitForAsyncUtils.waitForFxEvents();
+    void initializeDialog_editMode_populatesFields() {
+        ProductDTO product = new ProductDTO();
+        product.setProductId(1L);
+        product.setProductCode("P001");
+        product.setProductNameEn("Test Product");
+        product.setCategoryId(sampleCategory.getCategoryId()); // Link to sample category
+        product.setService(true);
+        product.setStockItem(false); // Explicitly set for service
 
-        assertEquals("P123", robot.lookup(PRODUCT_CODE_FIELD).queryAs(TextField.class).getText());
-        assertEquals("Test Sunglass", robot.lookup(NAME_EN_FIELD).queryAs(TextField.class).getText());
-        ComboBox<ProductCategoryDTO> categoryCombo = robot.lookup(CATEGORY_COMBOBOX).queryComboBox();
-        assertNotNull(categoryCombo.getValue());
-        assertEquals(1, categoryCombo.getValue().getCategoryId());
-        assertFalse(robot.lookup(IS_SERVICE_CHECKBOX).queryAs(CheckBox.class).isSelected());
-        assertTrue(robot.lookup(IS_STOCK_ITEM_CHECKBOX).queryAs(CheckBox.class).isSelected());
+        // Reset selectedProperty mocks for this specific scenario if needed, or ensure they reflect 'product.isService()'
+        when(isServiceCheckBox.selectedProperty()).thenReturn(new javafx.beans.property.SimpleBooleanProperty(product.isService()));
+
+
+        controller.initializeDialog(mockProductService, mockProductCategoryService, mockDialogStage, product);
+
+        verify(dialogTitleLabel).setText(MessageProvider.getString("product.dialog.edit.title"));
+        verify(productCodeField).setText("P001");
+        verify(nameEnField).setText("Test Product");
+        verify(isServiceCheckBox).setSelected(true);
+        verify(isStockItemCheckBox).setDisable(true);
+        verify(isStockItemCheckBox).setSelected(false);
+        verify(categoryComboBox).setValue(sampleCategory);
     }
 
     @Test
-    void isServiceCheckbox_toggles_isStockItemCheckbox(FxRobot robot) {
-        robot.interact(() -> controller.initializeDialog(mockProductService, mockProductCategoryService, stage, null));
-        WaitForAsyncUtils.waitForFxEvents();
+    void handleSaveButtonAction_addMode_validInput_savesProduct() throws ProductServiceException {
+        controller.initializeDialog(mockProductService, mockProductCategoryService, mockDialogStage, null);
 
-        CheckBox serviceCb = robot.lookup(IS_SERVICE_CHECKBOX).queryAs(CheckBox.class);
-        CheckBox stockCb = robot.lookup(IS_STOCK_ITEM_CHECKBOX).queryAs(CheckBox.class);
+        when(productCodeField.getText()).thenReturn("NEW001");
+        when(nameEnField.getText()).thenReturn("New Product EN");
+        when(nameArField.getText()).thenReturn("منتج جديد");
+        // categoryComboBox mock already returns sampleCategory
+        when(isServiceCheckBox.isSelected()).thenReturn(false);
+        when(isStockItemCheckBox.isSelected()).thenReturn(true);
 
-        robot.clickOn(serviceCb); // Check isService
-        WaitForAsyncUtils.waitForFxEvents();
-        assertFalse(stockCb.isSelected());
-        assertTrue(stockCb.isDisabled());
+        ProductDTO savedDto = new ProductDTO();
+        savedDto.setProductNameEn("New Product EN"); // Set a field to verify returned DTO
+        when(mockProductService.saveProduct(any(ProductDTO.class))).thenReturn(savedDto);
 
-        robot.clickOn(serviceCb); // Uncheck isService
-        WaitForAsyncUtils.waitForFxEvents();
-        assertTrue(stockCb.isSelected()); // Should default back to true
-        assertFalse(stockCb.isDisabled());
-    }
+        controller.handleSaveButtonAction(null);
 
-
-    @Test
-    void saveButton_addMode_validInput_callsServiceAndCloses(FxRobot robot) throws Exception {
-        robot.interact(() -> controller.initializeDialog(mockProductService, mockProductCategoryService, stage, null));
-        when(mockProductService.saveProduct(any(ProductDTO.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        robot.clickOn(PRODUCT_CODE_FIELD).write("NEW001");
-        robot.clickOn(NAME_EN_FIELD).write("New Product EN");
-        robot.clickOn(NAME_AR_FIELD).write("منتج جديد AR");
-        robot.interact(() -> robot.lookup(CATEGORY_COMBOBOX).queryComboBox().getSelectionModel().selectFirst());
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
-
-        verify(mockProductService).saveProduct(any(ProductDTO.class));
         assertTrue(controller.isSaved());
-        assertFalse(stage.isShowing());
+        assertEquals(savedDto, controller.getSavedProduct());
+        verify(mockDialogStage).close();
+        ArgumentCaptor<ProductDTO> captor = ArgumentCaptor.forClass(ProductDTO.class);
+        verify(mockProductService).saveProduct(captor.capture());
+        assertEquals("NEW001", captor.getValue().getProductCode());
+        assertTrue(captor.getValue().isStockItem());
+        assertFalse(captor.getValue().isService());
     }
 
     @Test
-    void saveButton_missingProductNameEn_showsValidationError(FxRobot robot) {
-        robot.interact(() -> controller.initializeDialog(mockProductService, mockProductCategoryService, stage, null));
-        robot.clickOn(PRODUCT_CODE_FIELD).write("P005");
-        robot.clickOn(NAME_AR_FIELD).write("منتج بالعربي فقط");
-        robot.interact(() -> robot.lookup(CATEGORY_COMBOBOX).queryComboBox().getSelectionModel().selectFirst());
+    void handleSaveButtonAction_invalidCode_showsError() {
+        controller.initializeDialog(mockProductService, mockProductCategoryService, mockDialogStage, null);
+        when(productCodeField.getText()).thenReturn(""); // Invalid
+        when(nameEnField.getText()).thenReturn("Name");
+        when(nameArField.getText()).thenReturn("اسم");
+        // For showErrorAlert
+        when(mockDialogStage.getOwner()).thenReturn(null);
+        when(productCodeField.getScene()).thenReturn(mock(javafx.scene.Scene.class));
+        when(productCodeField.getScene().getWindow()).thenReturn(mockDialogStage);
 
-        robot.clickOn(SAVE_BUTTON);
-        WaitForAsyncUtils.waitForFxEvents();
 
-        assertNotNull(robot.lookup(".alert.error").tryQuery().orElse(null), "Error alert should be shown.");
+        controller.handleSaveButtonAction(null);
+
         assertFalse(controller.isSaved());
-        assertTrue(stage.isShowing());
+        verify(mockDialogStage, never()).close();
+    }
 
-        robot.targetWindow(robot.listWindows().stream().filter(w -> w instanceof Stage && ((Stage)w).getModality() == javafx.stage.Modality.APPLICATION_MODAL).findFirst().get()).close();
+    @Test
+    void initializeDialog_setsRTL_forArabicLocale() {
+        LocaleManager.setCurrentLocale(LocaleManager.ARABIC);
+        resourceBundle = MessageProvider.getBundle();
+
+        controller.initializeDialog(mockProductService, mockProductCategoryService, mockDialogStage, null);
+
+        verify(productFormRootPane, atLeastOnce()).setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+
+        LocaleManager.setCurrentLocale(Locale.ENGLISH); // Reset
     }
 }

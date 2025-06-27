@@ -25,19 +25,22 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 // Manual JSON handling imports (alternative to Jackson)
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.Map;
-import java.util.HashMap;
+// import java.util.regex.Matcher;
+// import java.util.regex.Pattern;
+// import java.util.stream.Collectors;
+// import java.util.Map;
+// import java.util.HashMap;
 
 
 public class CustomLensConfigDialogController {
 
     private static final Logger logger = AppLogger.getLogger(CustomLensConfigDialogController.class);
 
-    @FXML private DialogPane dialogPane;
+    @FXML private DialogPane dialogPane; // Used as root for RTL
     // Prescription Fields
     @FXML private TextField odSphField; @FXML private TextField odCylField; @FXML private TextField odAxisField; @FXML private TextField odAddField;
     @FXML private TextField osSphField; @FXML private TextField osCylField; @FXML private TextField osAxisField; @FXML private TextField osAddField;
@@ -81,6 +84,19 @@ public class CustomLensConfigDialogController {
 
         // Setup to handle OK button click from DialogPane
         dialogPane.lookupButton(ButtonType.OK).addEventFilter(ActionEvent.ACTION, this::handleOkAction);
+        updateNodeOrientation();
+    }
+
+    private void updateNodeOrientation() {
+        if (dialogPane != null) { // DialogPane is the root
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                dialogPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                dialogPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("customLensDialogPane (DialogPane root) is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     private void addNumericFormatters() {
@@ -90,12 +106,14 @@ public class CustomLensConfigDialogController {
 
 
     public void initializeDialog(Stage stage, SalesOrderItemDTO lensItem) {
-        this.dialogStage = stage;
+        this.dialogStage = stage; // Though DialogPane manages its own window, good to have reference if needed
         this.currentLensItem = lensItem;
         this.okClicked = false;
 
+        updateNodeOrientation(); // Ensure orientation when dialog is fully set up
+
         if (lensItem.getPrescriptionDetails() != null && !lensItem.getPrescriptionDetails().isEmpty()) {
-            parseAndSetPrescriptionDetails(lensItem.getPrescriptionDetails());
+            parseAndSetPrescriptionDetailsGson(lensItem.getPrescriptionDetails());
         }
         if (lensItem.getUnitPrice() != null) {
             unitPriceField.setText(lensItem.getUnitPrice().toPlainString());
@@ -110,52 +128,40 @@ public class CustomLensConfigDialogController {
         reflectionTypeComboBox.setItems(FXCollections.observableArrayList(REFLECTION_UNCOATED, REFLECTION_AR));
     }
 
-    private void parseAndSetPrescriptionDetails(String jsonDetails) {
+    private void parseAndSetPrescriptionDetailsGson(String jsonDetails) {
         try {
-            // Manual JSON parsing: {"rx": {"odSph": "val", ...}, "attrs": {"material": "val", ...}}
-            // This is a simplified parser. A robust one would use a library or be more fault-tolerant.
-            Pattern rxPattern = Pattern.compile("\"rx\":\\s*\\{(.*?)\\}");
-            Pattern attrsPattern = Pattern.compile("\"attrs\":\\s*\\{(.*?)\\}");
-            Matcher rxMatcher = rxPattern.matcher(jsonDetails);
-            Matcher attrsMatcher = attrsPattern.matcher(jsonDetails);
+            Gson gson = new Gson();
+            JsonObject root = gson.fromJson(jsonDetails, JsonObject.class);
 
-            if (rxMatcher.find()) {
-                String rxJson = rxMatcher.group(1);
-                Map<String, String> rxMap = parseKeyValuePairs(rxJson);
-                odSphField.setText(rxMap.getOrDefault("odSph", ""));
-                odCylField.setText(rxMap.getOrDefault("odCyl", ""));
-                odAxisField.setText(rxMap.getOrDefault("odAxis", ""));
-                osSphField.setText(rxMap.getOrDefault("osSph", ""));
-                osCylField.setText(rxMap.getOrDefault("osCyl", ""));
-                osAxisField.setText(rxMap.getOrDefault("osAxis", ""));
-                odAddField.setText(rxMap.getOrDefault("odAdd", ""));
-                osAddField.setText(rxMap.getOrDefault("osAdd", ""));
-                ipdField.setText(rxMap.getOrDefault("ipd", ""));
+            if (root.has("rx")) {
+                JsonObject rxJson = root.getAsJsonObject("rx");
+                PrescriptionData rxData = gson.fromJson(rxJson, PrescriptionData.class);
+                odSphField.setText(bdToString(rxData.getOdSph()));
+                odCylField.setText(bdToString(rxData.getOdCyl()));
+                odAxisField.setText(intToString(rxData.getOdAxis()));
+                osSphField.setText(bdToString(rxData.getOsSph()));
+                osCylField.setText(bdToString(rxData.getOsCyl()));
+                osAxisField.setText(intToString(rxData.getOsAxis()));
+                odAddField.setText(bdToString(rxData.getOdAdd()));
+                osAddField.setText(bdToString(rxData.getOsAdd()));
+                ipdField.setText(bdToString(rxData.getIpd()));
             }
 
-            if (attrsMatcher.find()) {
-                String attrsJson = attrsMatcher.group(1);
-                Map<String, String> attrsMap = parseKeyValuePairs(attrsJson);
-                materialComboBox.setValue(attrsMap.getOrDefault("material", null));
-                shadeComboBox.setValue(attrsMap.getOrDefault("shade", null));
-                reflectionTypeComboBox.setValue(attrsMap.getOrDefault("reflectionType", null));
+            if (root.has("attrs")) {
+                JsonObject attrsJson = root.getAsJsonObject("attrs");
+                LensAttributes attrsData = gson.fromJson(attrsJson, LensAttributes.class);
+                materialComboBox.setValue(attrsData.getMaterial());
+                shadeComboBox.setValue(attrsData.getShade());
+                reflectionTypeComboBox.setValue(attrsData.getReflectionType());
             }
+        } catch (JsonSyntaxException e) {
+            logger.error("Error parsing prescription JSON with Gson: {}", jsonDetails, e);
+            AlertUtil.showError("Data Error", "Could not parse existing lens details (JSON format error).");
         } catch (Exception e) {
-            logger.error("Error parsing prescription JSON: {}", jsonDetails, e);
+            logger.error("Unexpected error parsing prescription JSON with Gson: {}", jsonDetails, e);
             AlertUtil.showError("Data Error", "Could not parse existing lens details.");
         }
     }
-
-    private Map<String, String> parseKeyValuePairs(String jsonFragment) {
-        Map<String, String> map = new HashMap<>();
-        Pattern pairPattern = Pattern.compile("\"(.*?)\":\\s*\"?(.*?)\"?([,}])");
-        Matcher matcher = pairPattern.matcher(jsonFragment);
-        while (matcher.find()) {
-            map.put(matcher.group(1), matcher.group(2));
-        }
-        return map;
-    }
-
 
     private void handleOkAction(ActionEvent event) {
         if (!validateInputs()) {
@@ -179,35 +185,25 @@ public class CustomLensConfigDialogController {
         attributes.setShade(shadeComboBox.getValue());
         attributes.setReflectionType(reflectionTypeComboBox.getValue());
 
-        // Manual JSON String construction
-        String rxJson = String.format(Locale.US, // Use Locale.US for consistent decimal points
-            "\"odSph\":\"%s\", \"odCyl\":\"%s\", \"odAxis\":\"%s\", \"odAdd\":\"%s\", " +
-            "\"osSph\":\"%s\", \"osCyl\":\"%s\", \"osAxis\":\"%s\", \"osAdd\":\"%s\", \"ipd\":\"%s\"",
-            bdToString(rxData.getOdSph()), bdToString(rxData.getOdCyl()), intToString(rxData.getOdAxis()), bdToString(rxData.getOdAdd()),
-            bdToString(rxData.getOsSph()), bdToString(rxData.getOsCyl()), intToString(rxData.getOsAxis()), bdToString(rxData.getOsAdd()), bdToString(rxData.getIpd())
-        );
-        String attrsJson = String.format(Locale.US,
-            "\"material\":\"%s\", \"shade\":\"%s\", \"reflectionType\":\"%s\"",
-            strToString(attributes.getMaterial()), strToString(attributes.getShade()), strToString(attributes.getReflectionType())
-        );
-        String fullJson = String.format(Locale.US, "{\"rx\":{%s}, \"attrs\":{%s}}", rxJson, attrsJson);
+        Gson gson = new Gson();
+        JsonObject root = new JsonObject();
+        root.add("rx", gson.toJsonTree(rxData));
+        root.add("attrs", gson.toJsonTree(attributes));
+        String fullJson = gson.toJson(root);
 
         currentLensItem.setPrescriptionDetails(fullJson);
         currentLensItem.setUnitPrice(TextFormatters.parseBigDecimal(unitPriceField.getText(), BigDecimal.ZERO));
         currentLensItem.setIsCustomLenses(true);
         currentLensItem.setDescription(MessageProvider.getString("salesorder.item.display.customLens") +
-                                       " (" + attributes.getMaterial() + ")"); // Example enhanced description
+                                       " (" + (attributes.getMaterial() != null ? attributes.getMaterial() : "") + ")");
         currentLensItem.setItemDisplayNameEn(MessageProvider.getString("salesorder.itemtype.customlens"));
 
-
         okClicked = true;
-        // DialogPane will close itself if event is not consumed.
     }
 
     private String bdToString(BigDecimal bd) { return bd == null ? "" : bd.toPlainString(); }
     private String intToString(Integer i) { return i == null ? "" : i.toString(); }
-    private String strToString(String s) { return s == null ? "" : s; }
-
+    // private String strToString(String s) { return s == null ? "" : s; } // Not needed with Gson handling nulls
 
     private boolean validateInputs() {
         List<String> errors = new ArrayList<>();

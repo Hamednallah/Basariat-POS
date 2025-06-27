@@ -1,0 +1,428 @@
+/* Basariat POS - Main Stylesheet */
+
+/* --- Root and General Styles --- */
+.root {
+    -fx-font-family: "Open Sans", "Tajawal", sans-serif; /* Default font stack */
+    -fx-base: #F5F5DC; /* Light Beige - for deriving other colors if not overridden */
+    -fx-background: #F5F5DC; /* Main background color */
+    -fx-control-inner-background: #FAF8F0; /* Old Lace/Warm Cream for text fields, combo boxes etc. */
+    -fx-text-background-color: #5D4037; /* Deep Brown for text in input fields */
+}
+
+/* --- Typography --- */
+.label {
+    -fx-text-fill: #5D4037; /* Deep Brown text for labels */
+    -fx-font-size: 12pt;
+}
+
+.form-title {
+    -fx-font-size: 20pt;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4E342E; /* Deep Brown */
+}
+
+.section-header {
+    -fx-font-size: 16pt;
+    -fx-font-weight: bold;
+    -fx-text-fill: #4E342E; /* Deep Brown */
+}
+
+/* --- Buttons --- */
+.button {
+    -fx-background-color: #A1887F; /* Muted Brown/Rose - Secondary Accent for standard buttons */
+    -fx-text-fill: #FFFDF5; /* Light Cream text */
+    -fx-font-size: 12pt;
+    -fx-font-weight: medium;
+    -fx-background-radius: 6; /* Rounded corners */
+    -fx-padding: 8 15 8 15;
+    -fx-border-color: transparent; /* No border by default */
+    -fx-border-width: 1;
+}
+
+.button:hover {
+    -fx-background-color: derive(#A1887F, -10%); /* Slightly darker on hover */
+}
+
+.button:pressed {
+    -fx-background-color: derive(#A1887F, -20%); /* Even darker when pressed */
+}
+
+/* Primary Action Buttons */
+.button.form-button-primary, .button.primary-action {
+    -fx-background-color: #BDB0D0; /* Muted Desaturated Purple/Mauve - Primary Accent */
+    -fx-text-fill: #FFFDF5; /* Light Cream text */
+}
+
+.button.form-button-primary:hover, .button.primary-action:hover {
+    -fx-background-color: derive(#BDB0D0, -10%);
+}
+
+.button.form-button-primary:pressed, .button.primary-action:pressed {
+    -fx-background-color: derive(#BDB0D0, -20%);
+}
+
+/* Status Bar Buttons */
+.status-bar-button {
+    -fx-background-color: #BDB0D0; /* Muted Purple/Mauve */
+    -fx-text-fill: #FFFDF5;
+    -fx-background-radius: 4;
+    -fx-padding: 5 10 5 10;
+    -fx-font-size: 10pt;
+}
+.status-bar-button:hover { -fx-background-color: derive(#BDB0D0, -10%); }
+.status-bar-button:pressed { -fx-background-color: derive(#BDB0D0, -20%); }
+
+
+/* --- Input Fields (TextField, PasswordField, ComboBox, DatePicker) --- */
+.text-field, .password-field, .combo-box-base, .date-picker {
+    -fx-background-color: #FAF8F0, /* inner background - Warm Cream */
+                         linear-gradient(to bottom, derive(#FAF8F0, -5%), derive(#FAF8F0, 0%)),
+                         linear-gradient(to bottom, derive(#FAF8F0, -10%), derive(#FAF8F0, -5%));
+    -fx-background-insets: 0, 1, 2;
+    -fx-background-radius: 6, 5, 4; /* Rounded corners */
+    -fx-prompt-text-fill: derive(#5D4037, -30%);
+    -fx-text-fill: #5D4037; /* Deep Brown text */
+    -fx-border-color: #A1887F; /* Muted Brown/Rose for border */
+    -fx-border-radius: 5;
+    -fx-border-width: 1px;
+    -fx-font-size: 12pt;
+    -fx-padding: 5 7 5 7;
+}
+
+.text-field:focused, .password-field:focused, .combo-box-base:focused, .date-picker:focused {
+    -fx-border-color: #BDB0D0; /* Purple/Mauve accent on focus */
+    -fx-border-width: 1.5px;
+    -fx-background-color: #FFFFFF; /* Slightly lighter background on focus */
+}
+
+.combo-box .list-cell {
+    -fx-background-color: #FAF8F0;
+    -fx-text-fill: #5D4037;
+}
+
+.combo-box .list-cell:hover {
+    -fx-background-color: #BDB0D0;
+    -fx-text-fill: #FFFDF5;
+}
+
+.combo-box .list-cell:selected {
+    -fx-background-color: #BDB0D0;
+    -fx-text-fill: #FFFDF5;
+}
+
+/* Date Picker Popup */
+.date-picker-popup {
+    -fx-background-color: #FAF8F0;
+    -fx-border-color: #A1887F;
+}
+.date-picker-popup .calendar-grid {
+    -fx-background-color: #FAF8F0;
+}
+.date-picker-popup .day-cell {
+    -fx-text-fill: #5D4037;
+}
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #BDB0D0;
+    -fx-text-fill: #FFFDF5;
+}
+.date-picker-popup .day-cell.selected {
+    -fx-background-color: #BDB0D0;
+    -fx-text-fill: #FFFDF5;
+}
+.date-picker-popup .arrow-button .arrow {
+    -fx-background-color: #5D4037;
+}
+
+/* --- MenuBar and Menus --- */
+.menu-bar {
+    -fx-background-color: #E0D8C0; /* Lighter Beige for MenuBar */
+    -fx-font-size: 11pt;
+}
+
+.menu-bar .label {
+    -fx-text-fill: #4E342E; /* Deep Brown */
+}
+
+.menu-item .label {
+    -fx-text-fill: #4E342E;
+}
+
+.menu-item:focused {
+    -fx-background-color: #BDB0D0; /* Purple/Mauve accent */
+}
+
+.menu-item:focused .label {
+    -fx-text-fill: #FFFDF5; /* Light Cream text on focus */
+}
+
+.context-menu {
+    -fx-background-color: #FAF8F0; /* Warm Cream */
+    -fx-background-radius: 0 0 6 6;
+    -fx-border-color: #A1887F;
+    -fx-border-width: 1px;
+}
+
+/* --- TableView --- */
+.table-view {
+    -fx-background-color: #FAF8F0; /* Warm Cream */
+    -fx-border-color: #A1887F; /* Muted Brown/Rose border */
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #E0D8C0; /* Lighter Beige */
+}
+
+.table-view .column-header, .table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent #A1887F transparent transparent; /* Column dividers */
+    -fx-border-width: 1px;
+    -fx-padding: 5 8 5 8;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #4E342E; /* Deep Brown */
+    -fx-font-weight: bold;
+    -fx-font-size: 11pt;
+}
+
+.table-view .table-cell {
+    -fx-text-fill: #5D4037; /* Deep Brown */
+    -fx-border-color: transparent #E0D8C0 transparent transparent; /* Light cell dividers */
+    -fx-padding: 5 8 5 8;
+    -fx-font-size: 11pt;
+}
+
+.table-row-cell {
+    -fx-background-color: #FAF8F0; /* Warm Cream */
+}
+
+.table-row-cell:odd {
+    -fx-background-color: derive(#FAF8F0, -3%); /* Slightly darker for odd rows */
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #BDB0D0; /* Purple/Mauve accent for selection */
+}
+
+.table-row-cell:selected .table-cell .text {
+    -fx-fill: #FFFDF5; /* Light Cream text for selected row */
+}
+
+/* --- Panels/Cards --- */
+.titled-pane {
+    -fx-text-fill: #4E342E; /* Deep Brown */
+    -fx-font-size: 13pt;
+}
+
+.titled-pane > .title {
+    -fx-background-color: #E0D8C0; /* Lighter Beige */
+    -fx-background-radius: 6 6 0 0;
+    -fx-border-color: #A1887F;
+    -fx-border-radius: 6 6 0 0;
+    -fx-padding: 8 10 8 10;
+}
+
+.titled-pane > *.content {
+    -fx-background-color: #FAF8F0; /* Warm Cream */
+    -fx-border-color: #A1887F;
+    -fx-border-width: 0 1 1 1; /* Border on sides and bottom */
+    -fx-background-radius: 0 0 6 6;
+    -fx-border-radius: 0 0 6 6;
+    -fx-padding: 15;
+}
+
+.card-pane { /* Custom class for general panels */
+    -fx-background-color: #FAF8F0;
+    -fx-background-radius: 8;
+    -fx-border-color: #D7CCC8; /* Lighter brown for subtle border */
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0.1, 2, 2);
+    -fx-padding: 15;
+}
+
+/* --- Status Bar --- */
+.status-bar {
+    -fx-background-color: #E0D8C0; /* Lighter Beige */
+    -fx-padding: 5 10 5 10;
+    -fx-border-color: #A1887F transparent transparent transparent; /* Top border */
+    -fx-border-width: 1px;
+}
+
+.status-bar-label {
+    -fx-text-fill: #4E342E; /* Deep Brown */
+    -fx-font-size: 10pt;
+}
+
+/* --- Error Messages --- */
+.error-message {
+    -fx-text-fill: #C62828; /* Red for errors */
+    -fx-font-size: 10pt;
+    -fx-font-weight: bold;
+}
+
+/* --- Login Container Specific --- */
+.login-container {
+    -fx-background-color: #F5F5DC; /* Beige */
+    -fx-padding: 50;
+}
+
+.login-container .form-title {
+    -fx-font-size: 24pt;
+    -fx-padding-bottom: 20;
+}
+
+.login-container .form-label {
+    -fx-font-size: 12pt;
+}
+
+.login-container .form-input { /* For textfield, passwordfield, combobox in login */
+    -fx-pref-width: 250;
+}
+
+.login-container .form-button-primary {
+    -fx-pref-width: 150;
+    -fx-padding: 10 20 10 20;
+}
+
+/* --- RTL Support --- */
+/* Specific RTL adjustments will be handled by JavaFX's nodeOrientation property.
+   This CSS can provide overrides if needed, but generally, JavaFX handles layout mirroring.
+   For example, if text alignment needs explicit setting for RTL:
+.rtl { -fx-text-alignment: RIGHT; }
+.rtl .label { -fx-text-alignment: RIGHT; }
+.rtl .text-field { -fx-text-alignment: RIGHT; }
+*/
+
+/* Ensure default text alignment is left for LTR if not overridden by system */
+.root:ltr {
+    -fx-text-alignment: left;
+}
+.label:ltr {
+    -fx-text-alignment: left;
+}
+.text-input:ltr {
+    -fx-text-alignment: left;
+}
+
+/* Explicit text alignment for RTL if needed, JavaFX might handle this via nodeOrientation */
+.root:rtl {
+    -fx-text-alignment: right;
+}
+.label:rtl {
+    -fx-text-alignment: right;
+}
+.text-input:rtl {
+    -fx-text-alignment: right;
+}
+
+/* Example: Specific adjustments for controls in RTL */
+/*
+.button:rtl {
+    // If icons need to be on the other side, use -fx-graphic-text-gap and content-display
+}
+.combo-box:rtl .arrow-button {
+    // Arrow might need specific styling if not auto-mirrored
+}
+*/
+
+/* Styles for specific views - can be added later or in separate files if needed */
+/* Example:
+.patient-management-view { ... }
+.sales-order-form { ... }
+*/
+
+/* ScrollPane styling */
+.scroll-pane {
+    -fx-background-color: transparent; /* Make ScrollPane background transparent */
+}
+.scroll-pane .viewport {
+    -fx-background-color: transparent; /* Make viewport background transparent */
+}
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color:transparent;
+}
+.increment-button, .decrement-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.scroll-bar .thumb {
+    -fx-background-color: #A1887F; /* Muted Brown/Rose for scrollbar thumb */
+    -fx-background-insets: 0, 1, 2;
+    -fx-background-radius: 0.5em; /* Rounded thumb */
+}
+.scroll-bar .thumb:hover {
+    -fx-background-color: derive(#A1887F, -10%);
+}
+
+/* TabPane styling */
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: #E0D8C0; /* Lighter Beige for tab header area */
+}
+.tab-pane .tab {
+    -fx-background-color: #FAF8F0; /* Warm Cream for inactive tabs */
+    -fx-background-radius: 6 6 0 0;
+    -fx-padding: 5 15 5 15;
+    -fx-border-color: #A1887F;
+    -fx-border-width: 1 1 0 1; /* Border around top and sides */
+}
+.tab-pane .tab:selected {
+    -fx-background-color: #F5F5DC; /* Main Beige for selected tab, to match content area */
+    -fx-border-color: #A1887F;
+    -fx-border-width: 1 1 0 1;
+}
+.tab-pane .tab .tab-label {
+    -fx-text-fill: #4E342E; /* Deep Brown text */
+}
+.tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #4E342E; /* Deep Brown text */
+    -fx-font-weight: bold;
+}
+.tab-pane .tab-content-area {
+    -fx-background-color: #F5F5DC; /* Main Beige for content area */
+    -fx-padding: 15;
+    -fx-border-color: #A1887F;
+    -fx-border-width: 0 1 1 1; /* Border on sides and bottom, matching selected tab */
+}
+
+/* CheckBox styling */
+.check-box .box {
+    -fx-background-color: #FAF8F0; /* Warm Cream */
+    -fx-border-color: #A1887F; /* Muted Brown/Rose */
+    -fx-border-radius: 3;
+}
+.check-box:selected .mark {
+    -fx-background-color: #4E342E; /* Deep Brown for the check mark */
+}
+.check-box .text {
+    -fx-text-fill: #5D4037; /* Deep Brown for label text */
+}
+
+/* RadioButton styling */
+.radio-button .radio {
+    -fx-background-color: #FAF8F0;
+    -fx-border-color: #A1887F;
+    -fx-border-radius: 100; /* Circular */
+}
+.radio-button:selected .dot {
+    -fx-background-color: #4E342E; /* Deep Brown for the selected dot */
+}
+.radio-button .text {
+    -fx-text-fill: #5D4037;
+}
+
+/* Tooltip styling */
+.tooltip {
+    -fx-background-color: #4E342E; /* Deep Brown background */
+    -fx-text-fill: #FFFDF5; /* Light Cream text */
+    -fx-background-radius: 4;
+    -fx-font-size: 10pt;
+    -fx-padding: 5 8 5 8;
+}
+
+/* Separator styling */
+.separator .line {
+    -fx-border-color: #A1887F; /* Muted Brown/Rose */
+    -fx-border-width: 1px;
+}

@@ -43,6 +43,7 @@ public class UserFormDialogController implements Initializable {
     @FXML private VBox permissionsVBox;
     @FXML private Button saveButton;
     @FXML private Button cancelButton;
+    @FXML private VBox userFormRootPane; // For RTL
 
     private Stage dialogStage;
     private UserService userService; // To be injected or set
@@ -63,15 +64,44 @@ public class UserFormDialogController implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         // Populate roles (example roles, could come from a service or enum)
-        roleComboBox.setItems(FXCollections.observableArrayList("Admin", "Cashier", "InventoryManager"));
+        roleComboBox.setItems(FXCollections.observableArrayList("Admin", "Cashier")); // As per SRS User Characteristics 2.3
         activeCheckBox.setSelected(true); // Default for new user
 
         populatePermissionCheckboxes();
+        updateNodeOrientation();
     }
 
-    public void getDialogStage(Stage dialogStage) {
-        this.dialogStage = dialogStage;
+    private void updateNodeOrientation() {
+        if (userFormRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                userFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                userFormRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("userFormRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
+
+
+    public void getDialogStage(Stage dialogStage) { // Renaming to setDialogStage for clarity
+        this.dialogStage = dialogStage;
+        // It's good practice to also set owner if this dialog is always modal to another stage
+        // And apply RTL to the dialog's root if not done by its own controller's initialize
+        if (dialogStage != null && dialogStage.getOwner() != null && dialogStage.getOwner().getScene() != null) {
+             dialogStage.getScene().getRoot().setNodeOrientation(dialogStage.getOwner().getScene().getRoot().getNodeOrientation());
+        }
+    }
+
+    // Method renamed in UserManagementController, let's keep it consistent if it was a typo there.
+    // For now, assuming UserManagementController calls setDialogStage, so this method is the one to use.
+    public void setDialogStage(Stage dialogStage) {
+        this.dialogStage = dialogStage;
+         if (this.dialogStage != null && userFormRootPane != null) { // Ensure root pane is available
+            this.dialogStage.getScene().setNodeOrientation(userFormRootPane.getNodeOrientation());
+        }
+    }
+
 
     public void setUserService(UserService userService) {
         this.userService = userService;

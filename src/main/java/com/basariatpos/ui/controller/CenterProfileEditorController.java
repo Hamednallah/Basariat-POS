@@ -50,27 +50,39 @@ public class CenterProfileEditorController implements Initializable {
     @FXML private TextField currencyCodeField;
     @FXML private TextArea receiptFooterMessageArea;
     @FXML private Button saveChangesButton;
+    @FXML private AnchorPane centerProfileEditorRootPane; // For RTL
 
     private CenterProfileService centerProfileService;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         // Service should be injected by the mechanism that loads this view (e.g., MainFrameController)
-        // For now, attempting to get it from AppLauncher as a fallback for direct FXML loading if needed,
-        // but proper injection is preferred.
         if (this.centerProfileService == null) {
-             this.centerProfileService = AppLauncher.getCenterProfileService(); // Ensure AppLauncher has this static getter
+             this.centerProfileService = AppLauncher.getCenterProfileService();
         }
 
         if (this.centerProfileService == null) {
             logger.error("CenterProfileService is null. Cannot perform operations.");
             showErrorAlert(MessageProvider.getString("centerprofile.editor.error.loadFailed"), "Critical service not available.");
-            saveChangesButton.setDisable(true); // Disable save if service is missing
+            if(saveChangesButton != null) saveChangesButton.setDisable(true);
             return;
         }
 
+        updateNodeOrientation();
         loadProfileData();
         logger.info("CenterProfileEditorController initialized.");
+    }
+
+    private void updateNodeOrientation() {
+        if (centerProfileEditorRootPane != null) {
+            if (com.basariatpos.i18n.LocaleManager.ARABIC.equals(com.basariatpos.i18n.LocaleManager.getCurrentLocale())) {
+                centerProfileEditorRootPane.setNodeOrientation(javafx.scene.NodeOrientation.RIGHT_TO_LEFT);
+            } else {
+                centerProfileEditorRootPane.setNodeOrientation(javafx.scene.NodeOrientation.LEFT_TO_RIGHT);
+            }
+        } else {
+            logger.warn("centerProfileEditorRootPane is null. Cannot set RTL/LTR orientation.");
+        }
     }
 
     // Setter for dependency injection by the calling controller (e.g., MainFrameController)
